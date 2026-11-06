@@ -7,6 +7,19 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
+export const GymnixColors = {
+  primary: '#BE3144',
+  primaryDark: '#8F1D2C',
+  primaryLight: '#D84A5D',
+  background: '#000000',
+  card: '#0A0A0A',
+  cardSecondary: '#121212',
+  borderDark: '#1F1F1F',
+  borderMuted: '#27272A',
+  muted: '#71717A',
+  text: '#FFFFFF',
+} as const;
+
 export const Colors = {
   light: {
     text: '#000000',
