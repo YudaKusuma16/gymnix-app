@@ -57,6 +57,7 @@ Desktop.ini
 # test & coverage
 coverage/
 .nyc_output/
+/z-Html
 
 example
 

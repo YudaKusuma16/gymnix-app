@@ -1,234 +1,198 @@
 import React from 'react';
 import {
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useProfile } from '@/features/profile/hooks/useProfile';
+import { ProfileHeroCard } from '@/features/profile/components/ProfileHeroCard';
+import { VitalsGrid } from '@/features/profile/components/VitalsGrid';
+import { PersonalRecordsCard } from '@/features/profile/components/PersonalRecordsCard';
+import { LifetimeStatsCard } from '@/features/profile/components/LifetimeStatsCard';
+import { TrainingProfileCard } from '@/features/profile/components/TrainingProfileCard';
 
 export default function ProfileScreen() {
+  const insets = useSafeAreaInsets();
+  const {
+    profile,
+    navigateToSettings,
+    navigateToEditProfile,
+    navigateToHomeGym,
+  } = useProfile();
+
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: '#000000' }}
-      className="flex-1 bg-black">
-      {/* Top Header */}
-      <View className="flex-row items-center justify-between px-6 py-4 border-b border-[#1F1F1F]">
-        <Text className="text-white text-2xl font-bold tracking-tight">Profile</Text>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
+      {/* 1. Cohesive Header (Matches Home & Workout Design System) */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.headerTitle}>Profile</Text>
+          <Text style={styles.headerSubtitle}>ATHLETE OS</Text>
+        </View>
+
         <TouchableOpacity
+          onPress={navigateToSettings}
           activeOpacity={0.7}
-          className="w-9 h-9 rounded-full bg-[#141414] border border-[#27272A] items-center justify-center">
-          <Ionicons name="settings-outline" size={18} color="#FFFFFF" />
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={styles.settingsButton}
+          accessibilityRole="button"
+          accessibilityLabel="Open Settings">
+          <Ionicons name="settings-outline" size={19} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
+      {/* 2. Scrollable Body */}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 20, paddingBottom: 40 }}
-        className="flex-1">
-        
-        {/* 1. Athlete Profile Header Card */}
-        <View className="bg-[#0A0A0A] rounded-2xl p-5 border border-[#1F1F1F] mb-6">
-          <View className="flex-row items-center gap-4 mb-4">
-            {/* Avatar Initials */}
-            <View className="w-16 h-16 rounded-full bg-[#BE3144] items-center justify-center border-2 border-white/20">
-              <Text className="text-white text-xl font-black">AP</Text>
-            </View>
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 88 },
+        ]}>
+        {/* Athlete Identity Hero Card */}
+        <ProfileHeroCard
+          profile={profile}
+          onEditPress={navigateToEditProfile}
+          onGymPress={navigateToHomeGym}
+        />
 
-            <View className="flex-1">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-white text-xl font-bold">Alex Pratama</Text>
-                <View className="flex-row items-center bg-[#141414] px-2 py-0.5 rounded-full border border-[#27272A] gap-1">
-                  <Text className="text-xs">🔥</Text>
-                  <Text className="text-white text-[10px] font-bold">4-Day Fire</Text>
-                </View>
-              </View>
-              <Text className="text-[#71717A] text-xs mt-0.5">
-                @alexpratama • Since Jan 2024
-              </Text>
-              <Text className="text-[#BE3144] text-xs font-semibold mt-1">
-                Iron District Metro Gym
-              </Text>
-            </View>
-          </View>
+        {/* Lifetime Athletic Career (Tonnage, Sessions, Time Under Iron) */}
+        <LifetimeStatsCard />
 
-          <TouchableOpacity
-            activeOpacity={0.8}
-            className="flex-row items-center justify-center bg-[#141414] py-2.5 rounded-xl border border-[#27272A]">
-            <Text className="text-white text-xs font-semibold">
-              Edit Bio & Vitals
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Minimalist Vitals 4-Quadrant Card */}
+        <VitalsGrid vitals={profile.vitals} />
 
-        {/* 2. Key Body Metrics Grid (2x2) */}
-        <View className="mb-6">
-          <Text className="text-white text-base font-bold mb-3">Body Vitals</Text>
+        {/* Personal Records: SBD Trio (Interactive Progression Curve) */}
+        <PersonalRecordsCard records={profile.personalRecords} />
 
-          <View className="flex-row gap-3 mb-3">
-            {/* Height */}
-            <View className="flex-1 bg-[#0A0A0A] rounded-2xl p-4 border border-[#1F1F1F]">
-              <Text className="text-[#71717A] text-[10px] font-bold uppercase tracking-wider mb-1">
-                HEIGHT
-              </Text>
-              <View className="flex-row items-baseline gap-1">
-                <Text className="text-white text-2xl font-black">178</Text>
-                <Text className="text-[#BE3144] text-xs font-bold uppercase">cm</Text>
-              </View>
-              <Text className="text-[#71717A] text-[10px] mt-1">
-                BMI: 23.5 (Optimal)
-              </Text>
-            </View>
+        {/* Training Program Specifications */}
+        <TrainingProfileCard
+          program={profile.trainingProgram}
+          homeGym={profile.homeGym}
+          onGymPress={navigateToHomeGym}
+        />
 
-            {/* Weight */}
-            <View className="flex-1 bg-[#0A0A0A] rounded-2xl p-4 border border-[#1F1F1F]">
-              <Text className="text-[#71717A] text-[10px] font-bold uppercase tracking-wider mb-1">
-                WEIGHT
-              </Text>
-              <View className="flex-row items-baseline gap-1">
-                <Text className="text-white text-2xl font-black">74.5</Text>
-                <Text className="text-[#BE3144] text-xs font-bold uppercase">kg</Text>
-              </View>
-              <Text className="text-emerald-400 text-[10px] mt-1">
-                -0.3 kg this wk
-              </Text>
-            </View>
-          </View>
-
-          <View className="flex-row gap-3">
-            {/* Calorie Cap */}
-            <View className="flex-1 bg-[#0A0A0A] rounded-2xl p-4 border border-[#1F1F1F]">
-              <Text className="text-[#71717A] text-[10px] font-bold uppercase tracking-wider mb-1">
-                CALORIE CAP
-              </Text>
-              <View className="flex-row items-baseline gap-1">
-                <Text className="text-white text-2xl font-black">2,450</Text>
-                <Text className="text-[#BE3144] text-xs font-bold uppercase">kcal</Text>
-              </View>
-              <Text className="text-[#71717A] text-[10px] mt-1">
-                BMR/TDEE Active
-              </Text>
-            </View>
-
-            {/* Discipline */}
-            <View className="flex-1 bg-[#0A0A0A] rounded-2xl p-4 border border-[#1F1F1F]">
-              <Text className="text-[#71717A] text-[10px] font-bold uppercase tracking-wider mb-1">
-                DISCIPLINE
-              </Text>
-              <View className="flex-row items-baseline gap-1">
-                <Text className="text-white text-2xl font-black">4</Text>
-                <Text className="text-[#BE3144] text-xs font-bold uppercase">Days</Text>
-              </View>
-              <Text className="text-[#71717A] text-[10px] mt-1">
-                Personal Best: 18 Days
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* 3. Personal Records: Standard Barbell Lifts (SBD) */}
-        <View className="bg-[#0A0A0A] rounded-2xl p-5 border border-[#1F1F1F] mb-6">
-          <View className="flex-row items-center justify-between mb-1">
-            <Text className="text-white text-base font-bold">Personal Records</Text>
-            <View className="bg-[#141414] px-2.5 py-0.5 rounded border border-[#27272A]">
-              <Text className="text-[#BE3144] text-[10px] font-bold">Wilks: 382.4</Text>
-            </View>
-          </View>
-          <Text className="text-[#71717A] text-xs mb-4">
-            Standard Barbell Lifts (SBD)
-          </Text>
-
-          {/* Combined Total */}
-          <View className="bg-[#141414] p-3 rounded-xl border border-[#27272A] flex-row items-center justify-between mb-4">
-            <Text className="text-[#71717A] text-xs font-bold uppercase">
-              COMBINED TOTAL VOLUME
-            </Text>
-            <View className="flex-row items-baseline gap-1">
-              <Text className="text-white text-xl font-black">430</Text>
-              <Text className="text-[#BE3144] text-xs font-bold">KG</Text>
-            </View>
-          </View>
-
-          {/* 3 Columns: Squat / Bench / Deadlift */}
-          <View className="flex-row gap-3">
-            {/* Squat */}
-            <View className="flex-1 bg-[#121212] p-3 rounded-xl border border-[#1F1F1F] items-center">
-              <Text className="text-[#71717A] text-xs font-medium">Squat</Text>
-              <Text className="text-white text-xl font-black my-1">140</Text>
-              <Text className="text-[#71717A] text-[10px]">2w ago</Text>
-            </View>
-
-            {/* Bench */}
-            <View className="flex-1 bg-[#121212] p-3 rounded-xl border border-[#BE3144] items-center">
-              <Text className="text-[#BE3144] text-xs font-bold">Bench</Text>
-              <Text className="text-white text-xl font-black my-1">105</Text>
-              <Text className="text-emerald-400 text-[10px] font-bold">🔥 Yesterday</Text>
-            </View>
-
-            {/* Deadlift */}
-            <View className="flex-1 bg-[#121212] p-3 rounded-xl border border-[#1F1F1F] items-center">
-              <Text className="text-[#71717A] text-xs font-medium">Deadlift</Text>
-              <Text className="text-white text-xl font-black my-1">185</Text>
-              <Text className="text-[#71717A] text-[10px]">1mo ago</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* 4. Training Program & Assessment Snapshot */}
-        <View className="bg-[#0A0A0A] rounded-2xl p-5 border border-[#1F1F1F] mb-6">
-          <Text className="text-white text-base font-bold mb-4">Training Profile</Text>
-
-          <View className="gap-3">
-            <View className="flex-row items-center justify-between py-2 border-b border-[#141414]">
-              <Text className="text-[#71717A] text-xs">Primary Objective</Text>
-              <Text className="text-white text-xs font-bold">
-                Hypertrophy (Muscle Mass)
-              </Text>
-            </View>
-
-            <View className="flex-row items-center justify-between py-2 border-b border-[#141414]">
-              <Text className="text-[#71717A] text-xs">Frequency Protocol</Text>
-              <Text className="text-white text-xs font-bold">
-                4 - 5 Days / Week (Advanced)
-              </Text>
-            </View>
-
-            <View className="flex-row items-center justify-between py-2">
-              <Text className="text-[#71717A] text-xs">Home Facility</Text>
-              <Text className="text-white text-xs font-bold">
-                Iron District Metro Gym (0.8 km)
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* 5. Account & Preferences Settings Menu Item */}
+        {/* Quick Shortcut: App & Preferences Settings */}
         <TouchableOpacity
-          activeOpacity={0.8}
-          className="bg-[#0A0A0A] rounded-2xl p-4 border border-[#1F1F1F] flex-row items-center justify-between mb-6">
-          <View className="flex-row items-center gap-3.5 flex-1 pr-2">
-            <View className="w-10 h-10 rounded-xl bg-[#141414] border border-[#27272A] items-center justify-center">
-              <Ionicons name="settings" size={20} color="#BE3144" />
+          onPress={navigateToSettings}
+          activeOpacity={0.75}
+          style={styles.settingsShortcutCard}>
+          <View style={styles.settingsShortcutLeft}>
+            <View style={styles.settingsIconBox}>
+              <Ionicons name="options-outline" size={18} color="#BE3144" />
             </View>
-            <View className="flex-1">
-              <Text className="text-white text-sm font-bold">
-                More Account & Workout Settings
+            <View>
+              <Text style={styles.settingsShortcutTitle}>
+                Workout & App Preferences
               </Text>
-              <Text className="text-[#71717A] text-xs mt-0.5" numberOfLines={1}>
-                Timer defaults, unit preferences, privacy & app
+              <Text style={styles.settingsShortcutDesc}>
+                Units, rest timers, haptics, security
               </Text>
             </View>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#71717A" />
+          <Ionicons name="chevron-forward" size={16} color="#71717A" />
         </TouchableOpacity>
 
-        {/* Footer Build Version */}
-        <Text className="text-[#52525B] text-xs text-center">
-          Gymnix Build v2.8.4 • Athlete OS 2025
+        {/* Minimalist Version Footnote */}
+        <Text style={styles.versionFootnote}>
+          Gymnix Athlete OS • v2.8.4
         </Text>
-
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#18181A',
+    backgroundColor: '#000000',
+  },
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+  },
+  headerSubtitle: {
+    color: '#71717A',
+    fontSize: 10.5,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    marginTop: 1,
+  },
+  settingsButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    borderCurve: 'continuous',
+    backgroundColor: '#121214',
+    borderWidth: 1,
+    borderColor: '#24242A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  settingsShortcutCard: {
+    backgroundColor: '#0A0A0A',
+    borderWidth: 1,
+    borderColor: '#1E1E22',
+    borderRadius: 16,
+    borderCurve: 'continuous',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  settingsShortcutLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  settingsIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderCurve: 'continuous',
+    backgroundColor: '#141416',
+    borderWidth: 1,
+    borderColor: '#27272A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingsShortcutTitle: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  settingsShortcutDesc: {
+    color: '#71717A',
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  versionFootnote: {
+    color: '#3F3F46',
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+    letterSpacing: 0.3,
+  },
+});

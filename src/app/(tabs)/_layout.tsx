@@ -1,7 +1,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/haptics';
 import { Tabs } from 'expo-router';
 import { StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +20,7 @@ export default function TabLayout() {
       }}
       screenOptions={{
         headerShown: false,
+        sceneStyle: { backgroundColor: '#000000' },
         tabBarActiveTintColor: '#BE3144',
         tabBarInactiveTintColor: '#8A8F9E',
 
@@ -104,6 +105,20 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="assistant"
+        options={{
+          title: 'Assistant',
+          tabBarIcon: ({ focused }) => (
+            <Ionicons
+              name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'}
+              size={21}
+              color={focused ? '#BE3144' : '#8A8F9E'}
+            />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="gyms"
         options={{
           title: 'Gyms',
@@ -117,19 +132,7 @@ export default function TabLayout() {
         }}
       />
 
-      <Tabs.Screen
-        name="ranks"
-        options={{
-          title: 'Ranks',
-          tabBarIcon: ({ focused }) => (
-            <Ionicons
-              name={focused ? 'trophy' : 'trophy-outline'}
-              size={21}
-              color={focused ? '#BE3144' : '#8A8F9E'}
-            />
-          ),
-        }}
-      />
+
 
       <Tabs.Screen
         name="profile"

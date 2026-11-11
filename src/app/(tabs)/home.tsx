@@ -1,5 +1,9 @@
+import { SemiGauge } from '@/components/ui/inverted-gauge';
+import { MonthlyFocusCard } from '@/components/ui/monthly-focus-card';
+import { MuscleVolumeCard } from '@/components/ui/muscle-volume-card';
+import { WeeklyAdherenceCard } from '@/components/ui/weekly-adherence-card';
+import * as Haptics from '@/utils/haptics';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -12,7 +16,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SemiGauge } from '@/components/ui/inverted-gauge';
 
 interface WeeklyVolumeDay {
   day: string;
@@ -21,13 +24,23 @@ interface WeeklyVolumeDay {
   baseColor: string;
 }
 
-const WEEKLY_DAYS: WeeklyVolumeDay[] = [
+const WEEKLY_DAYS_TONNAGE: WeeklyVolumeDay[] = [
   { day: 'M', value: '1.8k', height: '46%', baseColor: '#26292E' },
   { day: 'T', value: '2.4k', height: '50%', baseColor: '#26292E' },
   { day: 'W', value: 'Rest', height: '8%', baseColor: '#17181B' },
   { day: 'T', value: '3.1k', height: '82%', baseColor: '#BE3144' }, // Active (Thursday)
   { day: 'F', value: '1.4k', height: '36%', baseColor: '#1C1E22' },
   { day: 'S', value: 'Est', height: '46%', baseColor: '#17181B' },
+  { day: 'S', value: 'Rest', height: '8%', baseColor: '#17181B' },
+];
+
+const WEEKLY_DAYS_SETS: WeeklyVolumeDay[] = [
+  { day: 'M', value: '16', height: '62%', baseColor: '#26292E' },
+  { day: 'T', value: '18', height: '70%', baseColor: '#26292E' },
+  { day: 'W', value: 'Rest', height: '8%', baseColor: '#17181B' },
+  { day: 'T', value: '22', height: '85%', baseColor: '#BE3144' }, // Active (Thursday)
+  { day: 'F', value: '12', height: '46%', baseColor: '#1C1E22' },
+  { day: 'S', value: '14', height: '54%', baseColor: '#17181B' },
   { day: 'S', value: 'Rest', height: '8%', baseColor: '#17181B' },
 ];
 
@@ -42,6 +55,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [activeDayIdx, setActiveDayIdx] = useState<number>(3); // Default to Thursday (index 3)
+  const [volumeMetric, setVolumeMetric] = useState<'tonnage' | 'sets'>('tonnage');
 
   const handleStartSession = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -157,7 +171,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* METRICS ROW (Speedometer / Semi-Circular Gauge Meters) */}
+        {/* METRICS ROW: Calorie Gauge + Weekly Habit Adherence */}
         <View style={styles.metricsRow}>
           {/* Daily Target */}
           <View style={styles.metricCard}>
@@ -175,87 +189,133 @@ export default function HomeScreen() {
             <Text style={styles.metricFootnote}>BMR/TDEE Calibrated</Text>
           </View>
 
-          {/* Current Weight */}
-          <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>CURRENT WEIGHT</Text>
-            <View style={styles.metricGaugeSlot}>
-              <SemiGauge
-                value="74.5"
-                unit="kg"
-                progress={0.80}
-                size={128}
-                strokeWidth={12}
-                color="#BE3144"
-              />
-            </View>
-            <Text style={styles.metricFootnote}>
-              On track <Text style={styles.metricFootnoteHighlight}>(-0.3kg)</Text>
-            </Text>
-          </View>
+          {/* Weekly Habit Adherence (Target vs Completed Sessions) */}
+          <WeeklyAdherenceCard completed={3} target={4} />
         </View>
 
-        {/* WEEKLY VOLUME CARD (Matches User Image: Wide Bars, Tight Spacing, Glowing Active Day) */}
+        {/* WEEKLY VOLUME CARD (With Segmented Toggle: Tonnage vs Working Sets) */}
         <View style={styles.volumeCard}>
           <View style={styles.volumeHeaderRow}>
             <View>
-              <Text style={styles.cardTitle}>Weekly Volume</Text>
-              <Text style={styles.cardSubtitle}>Total tonnage across sets</Text>
+              <Text style={styles.cardTitle}>
+                {volumeMetric === 'tonnage' ? 'Weekly Volume' : 'Weekly Working Sets'}
+              </Text>
+              <Text style={styles.cardSubtitle}>
+                {volumeMetric === 'tonnage'
+                  ? 'Total tonnage across sets'
+                  : 'Total hard sets across splits'}
+              </Text>
             </View>
-            <View style={styles.volumeTotalRow}>
-              <Text style={styles.volumeTotalNumber}>14,820</Text>
-              <Text style={styles.volumeTotalUnit}>kg</Text>
+
+            <View style={styles.volumeHeaderRight}>
+              {/* Segmented Toggle */}
+              <View style={styles.segmentedToggle}>
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setVolumeMetric('tonnage');
+                  }}
+                  style={[
+                    styles.segmentOption,
+                    volumeMetric === 'tonnage' && styles.segmentOptionActive,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.segmentOptionText,
+                      volumeMetric === 'tonnage' && styles.segmentOptionTextActive,
+                    ]}>
+                    KG
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setVolumeMetric('sets');
+                  }}
+                  style={[
+                    styles.segmentOption,
+                    volumeMetric === 'sets' && styles.segmentOptionActive,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.segmentOptionText,
+                      volumeMetric === 'sets' && styles.segmentOptionTextActive,
+                    ]}>
+                    SETS
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.volumeTotalRow}>
+                <Text style={styles.volumeTotalNumber}>
+                  {volumeMetric === 'tonnage' ? '14,820' : '82'}
+                </Text>
+                <Text style={styles.volumeTotalUnit}>
+                  {volumeMetric === 'tonnage' ? 'kg' : 'sets'}
+                </Text>
+              </View>
             </View>
           </View>
 
           {/* Bar Chart Area */}
           <View style={styles.chartArea}>
             <View style={styles.barsContainer}>
-              {WEEKLY_DAYS.map((item, idx) => {
-                const isActive = activeDayIdx === idx;
-                return (
-                  <TouchableOpacity
-                    key={idx}
-                    activeOpacity={0.8}
-                    onPress={() => handleSelectDay(idx)}
-                    style={styles.barColumn}>
-                    {/* Active Value + Centered White Dot Indicator */}
-                    <View style={styles.topIndicatorSlot}>
-                      {isActive && (
-                        <>
-                          <Text style={styles.activeDayValue}>{item.value}</Text>
-                          <View style={styles.activeDayDot} />
-                        </>
-                      )}
-                    </View>
+              {(volumeMetric === 'tonnage' ? WEEKLY_DAYS_TONNAGE : WEEKLY_DAYS_SETS).map(
+                (item, idx) => {
+                  const isActive = activeDayIdx === idx;
+                  return (
+                    <TouchableOpacity
+                      key={idx}
+                      activeOpacity={0.8}
+                      onPress={() => handleSelectDay(idx)}
+                      style={styles.barColumn}>
+                      {/* Active Value + Centered White Dot Indicator */}
+                      <View style={styles.topIndicatorSlot}>
+                        {isActive && (
+                          <>
+                            <Text style={styles.activeDayValue}>{item.value}</Text>
+                            <View style={styles.activeDayDot} />
+                          </>
+                        )}
+                      </View>
 
-                    {/* Wide Bar with Tight Inter-Day Spacing */}
-                    <View style={styles.barTrack}>
-                      <View
+                      {/* Wide Bar with Tight Inter-Day Spacing */}
+                      <View style={styles.barTrack}>
+                        <View
+                          style={[
+                            styles.barFill,
+                            {
+                              height: item.height,
+                              backgroundColor: isActive ? '#C92A3E' : item.baseColor,
+                            },
+                            isActive && styles.activeBarGlow,
+                          ]}
+                        />
+                      </View>
+
+                      {/* Day Letter */}
+                      <Text
                         style={[
-                          styles.barFill,
-                          {
-                            height: item.height,
-                            backgroundColor: isActive ? '#C92A3E' : item.baseColor,
-                          },
-                          isActive && styles.activeBarGlow,
-                        ]}
-                      />
-                    </View>
-
-                    {/* Day Letter */}
-                    <Text
-                      style={[
-                        styles.barDayLabel,
-                        isActive && styles.barDayLabelActive,
-                      ]}>
-                      {item.day}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+                          styles.barDayLabel,
+                          isActive && styles.barDayLabelActive,
+                        ]}>
+                        {item.day}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                }
+              )}
             </View>
           </View>
         </View>
+
+        {/* MUSCLE GROUP VOLUME BREAKDOWN */}
+        <MuscleVolumeCard />
+
+        {/* ACTIVE CYCLE / MONTHLY FOCUS */}
+        <MonthlyFocusCard />
 
         {/* QUICK RECENT PR (Tone-Matched, No Green) */}
         <TouchableOpacity
@@ -507,6 +567,35 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: 12,
+  },
+  volumeHeaderRight: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  segmentedToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#16161A',
+    borderRadius: 8,
+    padding: 2,
+    borderWidth: 1,
+    borderColor: '#24242A',
+  },
+  segmentOption: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  segmentOptionActive: {
+    backgroundColor: '#BE3144',
+  },
+  segmentOptionText: {
+    color: '#71717A',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  segmentOptionTextActive: {
+    color: '#FFFFFF',
   },
   cardTitle: {
     color: '#FFFFFF',
