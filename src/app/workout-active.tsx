@@ -1,5 +1,9 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Animated,
+  BackHandler,
+  Dimensions,
+  Easing,
   ScrollView,
   Text,
   TextInput,
@@ -11,6 +15,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useActiveWorkout } from '@/features/workout/hooks/useActiveWorkout';
 import { formatElapsedSeconds, formatRestSeconds } from '@/utils/formatters';
+import * as Haptics from '@/utils/haptics';
 
 export default function WorkoutActiveScreen() {
   const router = useRouter();
@@ -18,45 +23,215 @@ export default function WorkoutActiveScreen() {
 
   // ViewModel hook
   const {
+    workoutTitle,
+    currentExerciseName,
+    exerciseTarget,
     elapsedSeconds,
     isSessionPaused,
+    isTimerStarted,
     restSeconds,
-    sets,
+    getExerciseSets,
+    nextExercises,
     expandedNext,
+    plateText,
     setExpandedNext,
     toggleSetComplete,
     updateSetWeight,
     updateSetReps,
+    addNewSet,
     adjustRest,
     toggleSessionPause,
     handleFinishWorkout,
     handleCancelWorkout,
   } = useActiveWorkout();
 
-  return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-black">
-      {/* 1. Header (matches z-Html) */}
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-[#1F1F1F] bg-black">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="w-9 h-9 items-center justify-center">
-          <Ionicons name="chevron-down" size={22} color="#FFFFFF" />
-        </TouchableOpacity>
+  const SCREEN_HEIGHT = Dimensions.get('window').height;
+  const [translateY] = useState(() => new Animated.Value(SCREEN_HEIGHT));
+  const isDismissing = useRef(false);
 
-        <Text className="text-white text-[17px] font-extrabold tracking-tight">
-          Push Day A
+  // Smooth slide-up on enter
+  useEffect(() => {
+    Animated.timing(translateY, {
+      toValue: 0,
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [translateY]);
+
+  // Smooth slide-down on dismiss / arrow down
+  const handleDismiss = useCallback(() => {
+    if (isDismissing.current) return;
+    isDismissing.current = true;
+    Haptics.selectionAsync();
+
+    Animated.timing(translateY, {
+      toValue: SCREEN_HEIGHT,
+      duration: 250,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => {
+      router.back();
+    });
+  }, [SCREEN_HEIGHT, translateY, router]);
+
+  // Hardware back button support on Android
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleDismiss();
+      return true;
+    });
+    return () => sub.remove();
+  }, [handleDismiss]);
+
+  // Render a precise, un-hovered workout log table for any exercise
+  const renderExerciseLogTable = (exerciseKey: string) => {
+    const currentSets = getExerciseSets(exerciseKey);
+
+    return (
+      <View className="bg-[#0A0A0A] border border-[#1F1F1F] rounded-xl overflow-hidden mb-4">
+        {/* Table Header */}
+        <View className="flex-row items-center bg-[#121212] px-3 py-2.5 border-b border-[#1F1F1F]">
+          <Text className="w-10 text-center text-[#71717A] text-[10px] font-bold tracking-wider">
+            SET
+          </Text>
+          <Text className="flex-1 text-center text-[#71717A] text-[10px] font-bold tracking-wider">
+            PREV
+          </Text>
+          <Text className="w-[72px] text-center text-[#71717A] text-[10px] font-bold tracking-wider">
+            KG
+          </Text>
+          <Text className="w-[72px] text-center text-[#71717A] text-[10px] font-bold tracking-wider">
+            REPS
+          </Text>
+          <Text className="w-12 text-center text-[#71717A] text-[10px] font-bold tracking-wider">
+            LOG
+          </Text>
+        </View>
+
+        {/* Table Rows */}
+        {currentSets.map((item, index) => (
+          <View
+            key={item.setNumber}
+            className="flex-row items-center px-3 py-2.5 border-t border-[#1F1F1F] bg-[#0A0A0A]">
+            {/* Set number */}
+            <Text className="w-10 text-center text-xs font-bold text-[#71717A]">
+              {item.setNumber}
+            </Text>
+
+            {/* Previous reference */}
+            <Text className="flex-1 text-center text-xs text-[#71717A]">
+              {item.prev}
+            </Text>
+
+            {/* Weight Input */}
+            <View className="w-[72px] items-center justify-center">
+              <TextInput
+                value={item.weight}
+                onChangeText={(val) => updateSetWeight(exerciseKey, index, val)}
+                placeholder="0"
+                placeholderTextColor="#52525B"
+                keyboardType="numeric"
+                textAlignVertical="center"
+                style={{
+                  height: 38,
+                  width: 64,
+                  padding: 0,
+                  paddingVertical: 0,
+                  paddingHorizontal: 0,
+                  textAlign: 'center',
+                  textAlignVertical: 'center',
+                  fontSize: 14,
+                  fontWeight: '700',
+                  color: '#FFFFFF',
+                }}
+                className="rounded-lg bg-[#121212] border border-[#1F1F1F]"
+              />
+            </View>
+
+            {/* Reps Input */}
+            <View className="w-[72px] items-center justify-center">
+              <TextInput
+                value={item.reps}
+                onChangeText={(val) => updateSetReps(exerciseKey, index, val)}
+                placeholder="0"
+                placeholderTextColor="#52525B"
+                keyboardType="numeric"
+                textAlignVertical="center"
+                style={{
+                  height: 38,
+                  width: 64,
+                  padding: 0,
+                  paddingVertical: 0,
+                  paddingHorizontal: 0,
+                  textAlign: 'center',
+                  textAlignVertical: 'center',
+                  fontSize: 14,
+                  fontWeight: '700',
+                  color: '#FFFFFF',
+                }}
+                className="rounded-lg bg-[#121212] border border-[#1F1F1F]"
+              />
+            </View>
+
+            {/* Log Button */}
+            <View className="w-12 items-center justify-center">
+              <TouchableOpacity
+                onPress={() => toggleSetComplete(exerciseKey, index)}
+                activeOpacity={0.7}
+                className={`w-9 h-9 rounded-lg items-center justify-center border ${
+                  item.completed
+                    ? 'bg-[#BE3144] border-[#BE3144]'
+                    : 'bg-[#121212] border-[#27272A]'
+                }`}>
+                <Ionicons
+                  name="checkmark"
+                  size={16}
+                  color={item.completed ? '#FFFFFF' : '#71717A'}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+
+        {/* Add Set Button */}
+        <TouchableOpacity
+          onPress={() => addNewSet(exerciseKey)}
+          activeOpacity={0.7}
+          className="flex-row items-center justify-center py-2.5 bg-[#121212] border-t border-[#1F1F1F]">
+          <Ionicons name="add" size={16} color="#BE3144" />
+          <Text className="text-[#BE3144] text-xs font-bold ml-1">Add Set</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+      <Animated.View
+        style={{
+          flex: 1,
+          backgroundColor: '#000000',
+          transform: [{ translateY }],
+        }}>
+        <SafeAreaView edges={['top']} className="flex-1 bg-black">
+          {/* 1. Header */}
+          <View className="flex-row items-center justify-between px-4 py-3 border-b border-[#1F1F1F] bg-black">
+            <TouchableOpacity
+              onPress={handleDismiss}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              className="w-9 h-9 items-center justify-center">
+              <Ionicons name="chevron-down" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+
+        <Text
+          numberOfLines={1}
+          className="text-white text-[17px] font-extrabold tracking-tight max-w-[200px] text-center">
+          {workoutTitle}
         </Text>
 
-        <TouchableOpacity
-          onPress={handleFinishWorkout}
-          activeOpacity={0.8}
-          className="bg-[#BE3144] px-3.5 py-1.5 rounded-full shadow-md">
-          <Text className="text-white text-xs font-black tracking-wider">
-            FINISH
-          </Text>
-        </TouchableOpacity>
+        <View className="w-9" />
       </View>
 
       <ScrollView
@@ -64,12 +239,12 @@ export default function WorkoutActiveScreen() {
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 16,
-          paddingBottom: insets.bottom + 40,
+          paddingBottom: 28,
         }}
         className="flex-1">
-        {/* 2. Dual Timers Strip (matches z-Html) */}
+        {/* 2. Dual Timers Strip */}
         <View className="bg-[#0A0A0C] border border-[#1F1F24] rounded-2xl p-3.5 flex-row items-center justify-between mb-4">
-          {/* Total Elapsed (tap to toggle pause) */}
+          {/* Total Elapsed (tap to start or pause) */}
           <TouchableOpacity
             activeOpacity={0.75}
             onPress={toggleSessionPause}>
@@ -77,13 +252,20 @@ export default function WorkoutActiveScreen() {
               <Text className="text-[#71717A] text-[10px] font-extrabold tracking-wider uppercase">
                 TOTAL TIME
               </Text>
-              {isSessionPaused && (
+              {isSessionPaused ? (
                 <View className="bg-amber-500/20 px-1 rounded">
                   <Text className="text-amber-400 text-[9px] font-bold">PAUSED</Text>
                 </View>
-              )}
+              ) : null}
             </View>
-            <Text className={`text-xl font-black font-mono ${isSessionPaused ? 'text-amber-400' : 'text-white'}`}>
+            <Text
+              className={`text-xl font-black font-mono ${
+                !isTimerStarted
+                  ? 'text-[#71717A]'
+                  : isSessionPaused
+                  ? 'text-amber-400'
+                  : 'text-white'
+              }`}>
               {formatElapsedSeconds(elapsedSeconds)}
             </Text>
           </TouchableOpacity>
@@ -120,111 +302,18 @@ export default function WorkoutActiveScreen() {
         {/* 3. Exercise Details Header */}
         <View className="mb-4">
           <Text className="text-[#71717A] text-xs font-semibold tracking-wider uppercase mb-1">
-            PUSH DAY A • EXERCISE 1
+            EXERCISE 1
           </Text>
           <Text className="text-white text-xl font-bold tracking-tight mb-1">
-            Barbell Flat Bench Press
+            {currentExerciseName}
           </Text>
           <Text className="text-[#71717A] text-[13px]">
-            Target: 3 Sets × 6–8 Reps • RPE 8.5
+            {exerciseTarget}
           </Text>
         </View>
 
-        {/* 4. Set Logger Table */}
-        <View className="bg-[#0A0A0A] border border-[#1F1F1F] rounded-xl overflow-hidden mb-4">
-          {/* Table Header */}
-          <View className="flex-row items-center bg-[#121212] px-3 py-2.5 border-b border-[#1F1F1F]">
-            <Text className="w-10 text-center text-[#71717A] text-[10px] font-bold tracking-wider">
-              SET
-            </Text>
-            <Text className="flex-1 text-center text-[#71717A] text-[10px] font-bold tracking-wider">
-              PREV
-            </Text>
-            <Text className="w-20 text-center text-[#71717A] text-[10px] font-bold tracking-wider">
-              KG
-            </Text>
-            <Text className="w-16 text-center text-[#71717A] text-[10px] font-bold tracking-wider">
-              REPS
-            </Text>
-            <Text className="w-10 text-center text-[#71717A] text-[10px] font-bold tracking-wider">
-              LOG
-            </Text>
-          </View>
-
-          {/* Table Rows */}
-          {sets.map((item, index) => {
-            const isActiveUncompleted = !item.completed && sets.slice(0, index).every((s) => s.completed);
-
-            return (
-              <View
-                key={item.setNumber}
-                className={`flex-row items-center px-3 py-3 border-t border-[#1F1F1F] ${
-                  isActiveUncompleted
-                    ? 'bg-[#BE3144]/10'
-                    : item.completed
-                    ? 'bg-[#0A0A0A]'
-                    : 'bg-[#0A0A0A]/60'
-                }`}>
-                {/* Set number */}
-                <Text
-                  className={`w-10 text-center text-xs font-bold ${
-                    item.completed ? 'text-[#BE3144]' : 'text-[#71717A]'
-                  }`}>
-                  {item.setNumber}
-                </Text>
-
-                {/* Previous reference */}
-                <Text className="flex-1 text-center text-xs text-[#71717A]">
-                  {item.prev}
-                </Text>
-
-                {/* Weight Input */}
-                <View className="w-20 items-center justify-center">
-                  <TextInput
-                    value={item.weight}
-                    onChangeText={(val) => updateSetWeight(index, val)}
-                    keyboardType="numeric"
-                    className={`w-16 h-8 text-center text-xs font-bold rounded text-white bg-[#121212] border ${
-                      isActiveUncompleted
-                        ? 'border-[#BE3144] text-white'
-                        : 'border-[#1F1F1F]'
-                    }`}
-                  />
-                </View>
-
-                {/* Reps Input */}
-                <View className="w-16 items-center justify-center">
-                  <TextInput
-                    value={item.reps}
-                    onChangeText={(val) => updateSetReps(index, val)}
-                    keyboardType="numeric"
-                    className="w-14 h-8 text-center text-xs font-bold rounded text-white bg-[#121212] border border-[#1F1F1F]"
-                  />
-                </View>
-
-                {/* Log Button */}
-                <View className="w-10 items-center justify-center">
-                  <TouchableOpacity
-                    onPress={() => toggleSetComplete(index)}
-                    activeOpacity={0.7}
-                    className={`w-8 h-8 rounded-lg items-center justify-center border ${
-                      item.completed
-                        ? 'bg-[#BE3144] border-[#BE3144]'
-                        : isActiveUncompleted
-                        ? 'bg-[#121212] border-[#BE3144]/60'
-                        : 'bg-[#121212] border-[#27272A]'
-                    }`}>
-                    <Ionicons
-                      name="checkmark"
-                      size={16}
-                      color={item.completed ? '#FFFFFF' : '#71717A'}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })}
-        </View>
+        {/* 4. Set Logger Table for Primary Exercise */}
+        {renderExerciseLogTable('primary')}
 
         {/* 5. Plate Calculator Card */}
         <View className="flex-row items-center bg-[#0A0A0A] border border-[#1F1F1F] rounded-xl p-3.5 gap-3 mb-6">
@@ -233,93 +322,94 @@ export default function WorkoutActiveScreen() {
           </View>
           <View className="flex-1">
             <Text className="text-[#71717A] text-[11px] font-bold tracking-wider uppercase mb-0.5">
-              PLATE
+              PLATE CALCULATOR
             </Text>
             <Text className="text-[#C8C6C5] text-xs font-medium">
-              20 kg Bar + 2×20 kg + 2×10 kg
+              {plateText}
             </Text>
           </View>
         </View>
 
         {/* 6. Up Next In Session Accordion */}
-        <View className="mb-6">
-          <Text className="text-[#71717A] text-xs font-semibold tracking-wider uppercase mb-3">
-            UP NEXT IN SESSION
-          </Text>
-
-          {/* Card 1 */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setExpandedNext(expandedNext === 1 ? null : 1)}
-            className="flex-row items-center justify-between bg-[#0A0A0A] border border-[#1F1F1F] rounded-xl p-3.5 mb-2.5">
-            <View className="flex-row items-center gap-3">
-              <View className="w-9 h-9 rounded-lg bg-[#121212] border border-[#1F1F1F] items-center justify-center">
-                <Text className="text-white font-bold text-sm">2</Text>
-              </View>
-              <View>
-                <Text className="text-white font-bold text-sm">
-                  Incline Dumbbell Press
-                </Text>
-                <Text className="text-[#71717A] text-xs mt-0.5">
-                  3 sets • 28 kg targets
-                </Text>
-              </View>
-            </View>
-            <Ionicons
-              name={expandedNext === 1 ? 'chevron-up' : 'chevron-down'}
-              size={18}
-              color="#71717A"
-            />
-          </TouchableOpacity>
-
-          {/* Card 2 */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setExpandedNext(expandedNext === 2 ? null : 2)}
-            className="flex-row items-center justify-between bg-[#0A0A0A]/60 border border-[#1F1F1F]/80 rounded-xl p-3.5">
-            <View className="flex-row items-center gap-3">
-              <View className="w-9 h-9 rounded-lg bg-[#121212] border border-[#1F1F1F] items-center justify-center">
-                <Text className="text-white/80 font-bold text-sm">3</Text>
-              </View>
-              <View>
-                <Text className="text-white/80 font-bold text-sm">
-                  Cable Chest Flyes
-                </Text>
-                <Text className="text-[#71717A] text-xs mt-0.5">
-                  3 sets • 15 kg targets
-                </Text>
-              </View>
-            </View>
-            <Ionicons
-              name={expandedNext === 2 ? 'chevron-up' : 'chevron-down'}
-              size={18}
-              color="#71717A"
-            />
-          </TouchableOpacity>
-        </View>
-
-        {/* Bottom Actions (matches z-Html) */}
-        <View className="flex-row items-center gap-3 mt-4 mb-6">
-          <TouchableOpacity
-            onPress={handleCancelWorkout}
-            activeOpacity={0.75}
-            className="flex-1 items-center justify-center bg-[#141416] border border-[#27272A] rounded-xl py-3.5">
-            <Text className="text-white text-xs font-bold">
-              Cancel
+        {nextExercises.length > 0 && (
+          <View className="mb-6">
+            <Text className="text-[#71717A] text-xs font-semibold tracking-wider uppercase mb-3">
+              UP NEXT IN SESSION ({nextExercises.length})
             </Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={handleFinishWorkout}
-            activeOpacity={0.85}
-            className="flex-[2] flex-row items-center justify-center bg-[#BE3144] rounded-xl py-3.5 gap-2 shadow-lg active:bg-[#A32837]">
-            <Ionicons name="checkmark-sharp" size={17} color="#FFFFFF" />
-            <Text className="text-white font-bold text-xs tracking-wide uppercase">
-              Save & Complete
-            </Text>
-          </TouchableOpacity>
-        </View>
+            {nextExercises.map((item) => {
+              const isExpanded = expandedNext === item.id;
+
+              return (
+                <View
+                  key={item.id}
+                  className="bg-[#0A0A0A] border border-[#1F1F1F] rounded-xl mb-2.5 overflow-hidden">
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setExpandedNext(isExpanded ? null : item.id)}
+                    className="flex-row items-center justify-between p-3.5">
+                    <View className="flex-1 pr-2">
+                      <Text className="text-white font-bold text-sm">
+                        {item.name}
+                      </Text>
+                      <Text className="text-[#71717A] text-xs mt-0.5">
+                        {item.setsCount || item.target}
+                      </Text>
+                    </View>
+                    <Ionicons
+                      name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={18}
+                      color="#71717A"
+                    />
+                  </TouchableOpacity>
+
+                  {/* Expanded Workout Log for this exercise */}
+                  {isExpanded && (
+                    <View className="px-3 pb-3 pt-1 border-t border-[#1F1F1F]/60">
+                      {renderExerciseLogTable(item.name)}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Static Bottom Actions Bar */}
+      <View
+        style={{
+          paddingBottom: Math.max(insets.bottom, 16),
+        }}
+        className="px-4 pt-3 bg-[#0A0A0C] border-t border-[#1F1F24] flex-row items-center gap-3">
+        <TouchableOpacity
+          onPress={handleCancelWorkout}
+          activeOpacity={0.75}
+          className="flex-1 h-12 items-center justify-center bg-[#141416] border border-[#27272A] rounded-xl">
+          <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={toggleSessionPause}
+          activeOpacity={0.75}
+          style={{ backgroundColor: '#10B981' }}
+          className="flex-1 h-12 items-center justify-center rounded-xl shadow-lg">
+          <Ionicons
+            name={isTimerStarted && !isSessionPaused ? 'pause' : 'play'}
+            size={20}
+            color="#FFFFFF"
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleFinishWorkout}
+          activeOpacity={0.85}
+          className="flex-1 h-12 items-center justify-center bg-[#BE3144] rounded-xl shadow-lg active:bg-[#A32837]">
+          <Ionicons name="checkmark" size={22} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
+        </SafeAreaView>
+      </Animated.View>
+    </View>
   );
 }

@@ -31,66 +31,76 @@ export const PersonalRecordsCard = React.memo(function PersonalRecordsCard({
           <Text style={styles.cardTitle}>Personal Records</Text>
           <Text style={styles.cardSubtitle}>Standard Barbell Lifts (SBD)</Text>
         </View>
-        <View style={styles.trendHintPill}>
-          <Ionicons name="stats-chart" size={11} color="#BE3144" />
-          <Text style={styles.trendHintText}>TAP FOR TREND</Text>
-        </View>
       </View>
 
-      {/* 3 Columns: Squat (Left) / Bench (Center) / Deadlift (Right) */}
-      <View style={styles.columnsRow}>
-        {/* Squat - Left Aligned */}
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => handleOpenLift('squat')}
-          style={styles.liftColLeft}>
-          <Text style={styles.liftName}>SQUAT</Text>
-          <View style={styles.liftValueRow}>
-            <Text style={styles.liftNumber}>{records.squatKg}</Text>
-            <Text style={styles.liftUnit}>kg</Text>
-          </View>
-          <Text style={styles.liftTime}>{records.squatDate}</Text>
-        </TouchableOpacity>
+      {/* Card Wrapper for PRs */}
+      <View style={styles.prCard}>
+        {/* 3 Columns: Squat (Left) / Bench (Center) / Deadlift (Right) */}
+        <View style={styles.columnsRow}>
+          {/* Squat - Left Aligned */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => handleOpenLift('squat')}
+            style={styles.liftColLeft}>
+            <Text style={styles.liftName}>SQUAT</Text>
+            <View style={styles.liftValueRow}>
+              <Text style={styles.liftNumber}>
+                {records.squatKg > 0 ? records.squatKg : '-'}
+              </Text>
+              {records.squatKg > 0 && <Text style={styles.liftUnit}>kg</Text>}
+            </View>
+            <Text style={styles.liftTime}>
+              {records.squatDate && records.squatDate !== '-' ? records.squatDate : '-'}
+            </Text>
+          </TouchableOpacity>
 
-        {/* Bench - Exactly in the center */}
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => handleOpenLift('bench')}
-          style={styles.liftColCenter}>
-          <View style={styles.benchHeaderRow}>
+          {/* Bench - Exactly in the center */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => handleOpenLift('bench')}
+            style={styles.liftColCenter}>
             <Text style={styles.liftNameActive}>BENCH</Text>
-            <View style={styles.prDot} />
-          </View>
-          <View style={styles.liftValueRow}>
-            <Text style={styles.liftNumber}>{records.benchKg}</Text>
-            <Text style={styles.liftUnitActive}>kg</Text>
-          </View>
-          <Text style={styles.liftStatusActive}>PR • Yesterday</Text>
-        </TouchableOpacity>
+            <View style={styles.liftValueRow}>
+              <Text style={styles.liftNumber}>
+                {records.benchKg > 0 ? records.benchKg : '-'}
+              </Text>
+              {records.benchKg > 0 && <Text style={styles.liftUnitActive}>kg</Text>}
+            </View>
+            <Text style={styles.liftStatusActive}>
+              {records.benchDate && records.benchDate !== '-' ? records.benchDate : '-'}
+            </Text>
+          </TouchableOpacity>
 
-        {/* Deadlift - Right Aligned */}
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => handleOpenLift('deadlift')}
-          style={styles.liftColRight}>
-          <Text style={styles.liftName}>DEADLIFT</Text>
-          <View style={styles.liftValueRow}>
-            <Text style={styles.liftNumber}>{records.deadliftKg}</Text>
-            <Text style={styles.liftUnit}>kg</Text>
-          </View>
-          <Text style={styles.liftTime}>{records.deadliftDate}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Combined SBD Total (Placed Below 3 Lifts, Without Wrapper Box) */}
-      <View style={styles.totalVolumeRow}>
-        <View style={styles.totalVolumeLeft}>
-          <Ionicons name="barbell-outline" size={16} color="#71717A" />
-          <Text style={styles.totalVolumeLabel}>COMBINED TOTAL</Text>
+          {/* Deadlift - Right Aligned */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => handleOpenLift('deadlift')}
+            style={styles.liftColRight}>
+            <Text style={styles.liftName}>DEADLIFT</Text>
+            <View style={styles.liftValueRow}>
+              <Text style={styles.liftNumber}>
+                {records.deadliftKg > 0 ? records.deadliftKg : '-'}
+              </Text>
+              {records.deadliftKg > 0 && <Text style={styles.liftUnit}>kg</Text>}
+            </View>
+            <Text style={styles.liftTime}>
+              {records.deadliftDate && records.deadliftDate !== '-' ? records.deadliftDate : '-'}
+            </Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.totalVolumeRight}>
-          <Text style={styles.totalVolumeNumber}>{records.totalVolumeKg}</Text>
-          <Text style={styles.totalVolumeUnit}>KG</Text>
+
+        {/* Combined SBD Total */}
+        <View style={styles.totalVolumeRow}>
+          <View style={styles.totalVolumeLeft}>
+            <Ionicons name="barbell-outline" size={16} color="#71717A" />
+            <Text style={styles.totalVolumeLabel}>COMBINED TOTAL</Text>
+          </View>
+          <View style={styles.totalVolumeRight}>
+            <Text style={styles.totalVolumeNumber}>
+              {records.totalVolumeKg > 0 ? records.totalVolumeKg : '-'}
+            </Text>
+            {records.totalVolumeKg > 0 && <Text style={styles.totalVolumeUnit}>KG</Text>}
+          </View>
         </View>
       </View>
 
@@ -115,23 +125,6 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     paddingHorizontal: 2,
   },
-  trendHintPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#161418',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#261820',
-  },
-  trendHintText: {
-    color: '#BE3144',
-    fontSize: 9.5,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-  },
   cardTitle: {
     color: '#FFFFFF',
     fontSize: 16,
@@ -144,10 +137,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 2,
   },
+  prCard: {
+    backgroundColor: '#000000',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#222226',
+    borderCurve: 'continuous',
+    padding: 16,
+  },
   columnsRow: {
     flexDirection: 'row',
     marginBottom: 16,
-    paddingHorizontal: 2,
   },
   liftColLeft: {
     flex: 1,
@@ -160,19 +160,6 @@ const styles = StyleSheet.create({
   liftColRight: {
     flex: 1,
     alignItems: 'flex-end',
-  },
-  benchHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    marginBottom: 4,
-  },
-  prDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#BE3144',
   },
   liftName: {
     color: '#71717A',
@@ -188,6 +175,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.7,
     textTransform: 'uppercase',
+    marginBottom: 4,
   },
   liftValueRow: {
     flexDirection: 'row',
@@ -228,10 +216,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 2,
-    paddingTop: 12,
+    paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: '#18181A',
+    borderTopColor: '#202026',
   },
   totalVolumeLeft: {
     flexDirection: 'row',

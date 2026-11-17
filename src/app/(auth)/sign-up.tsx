@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -15,22 +15,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DividerWithText } from '@/components/ui/divider-with-text';
 import { SocialAuthButtons } from '@/components/ui/social-auth-buttons';
+import { useSignUp } from '@/features/auth/hooks/useSignUp';
 
 export default function SignUpScreen() {
   const router = useRouter();
-  const [fullName, setFullName] = useState('Alex Hunter');
-  const [email, setEmail] = useState('alex@gymnix.fit');
-  const [password, setPassword] = useState('IronOverload2024!');
-  const [loading, setLoading] = useState(false);
-
-  const handleSignUp = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      // Navigate to onboarding flow
-      router.push('/(onboarding)/gender');
-    }, 500);
-  };
+  const {
+    fullName,
+    setFullName,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    loading,
+    googleLoading,
+    errorMessage,
+    strength,
+    handleSignUp,
+    handleGoogleSignUp,
+  } = useSignUp();
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#000000' }} className="flex-1 bg-black">
@@ -54,13 +56,35 @@ export default function SignUpScreen() {
             </Text>
           </View>
 
+          {/* Error Message Banner */}
+          {errorMessage ? (
+            <View
+              style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                borderColor: 'rgba(239, 68, 68, 0.35)',
+                borderWidth: 1,
+                borderRadius: 12,
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                marginBottom: 14,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+              <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
+              <Text style={{ color: '#F87171', fontSize: 13, flex: 1, fontWeight: '500' }}>
+                {errorMessage}
+              </Text>
+            </View>
+          ) : null}
+
           {/* Form Section */}
           <View className="gap-4">
             <Input
               label="FULL NAME"
               value={fullName}
               onChangeText={setFullName}
-              placeholder="Alex Hunter"
+              placeholder="Enter your full name"
               leftIcon={
                 <Ionicons name="person-outline" size={20} color="#71717A" />
               }
@@ -70,9 +94,10 @@ export default function SignUpScreen() {
               label="EMAIL ADDRESS"
               value={email}
               onChangeText={setEmail}
-              placeholder="alex@gymnix.fit"
+              placeholder="name@example.com"
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
               leftIcon={
                 <Ionicons name="mail-outline" size={20} color="#71717A" />
               }
@@ -91,22 +116,30 @@ export default function SignUpScreen() {
               />
 
               {/* Password Strength Indicator */}
-              <View className="mt-1">
-                <View className="flex-row items-center justify-between mb-1.5">
-                  <Text className="text-[#71717A] text-xs font-medium">
-                    Password Security
-                  </Text>
-                  <Text className="text-emerald-400 text-xs font-semibold">
-                    Strong
-                  </Text>
+              {password.length > 0 && (
+                <View className="mt-1">
+                  <View className="flex-row items-center justify-between mb-1.5">
+                    <Text className="text-[#71717A] text-xs font-medium">
+                      Password Security
+                    </Text>
+                    <Text style={{ color: strength.color }} className="text-xs font-semibold">
+                      {strength.text}
+                    </Text>
+                  </View>
+                  <View className="flex-row gap-1.5">
+                    {[1, 2, 3, 4].map((step) => (
+                      <View
+                        key={step}
+                        style={{
+                          backgroundColor:
+                            step <= strength.level ? strength.color : '#27272A',
+                        }}
+                        className="flex-1 h-1 rounded-full"
+                      />
+                    ))}
+                  </View>
                 </View>
-                <View className="flex-row gap-1.5">
-                  <View className="flex-1 h-1 bg-emerald-500 rounded-full" />
-                  <View className="flex-1 h-1 bg-emerald-500 rounded-full" />
-                  <View className="flex-1 h-1 bg-emerald-500 rounded-full" />
-                  <View className="flex-1 h-1 bg-emerald-500 rounded-full" />
-                </View>
-              </View>
+              )}
             </View>
 
             {/* Terms and Privacy Statement */}
@@ -120,6 +153,7 @@ export default function SignUpScreen() {
               title="Create Account"
               onPress={handleSignUp}
               loading={loading}
+              disabled={loading || googleLoading}
               className="mt-2"
               size="lg"
             />
@@ -127,7 +161,10 @@ export default function SignUpScreen() {
 
           {/* Social Auth Section */}
           <DividerWithText text="OR CONTINUE WITH" />
-          <SocialAuthButtons />
+          <SocialAuthButtons
+            onGooglePress={handleGoogleSignUp}
+            loading={googleLoading}
+          />
 
           {/* Spacer */}
           <View className="flex-1 min-h-[30px]" />

@@ -2,7 +2,7 @@ export interface AthleteProfile {
   id: string;
   fullName: string;
   username: string;
-  avatarUrl?: string;
+  avatarUrl?: string | null;
   initials: string;
   memberSince: string;
   tier: 'Athlete' | 'Pro Athlete' | 'Coach';

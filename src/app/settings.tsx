@@ -17,6 +17,9 @@ import { useSettings } from '@/features/settings/hooks/useSettings';
 export default function SettingsScreen() {
   const router = useRouter();
   const {
+    profileName,
+    profileInitials,
+    homeGymName,
     autoStartTimer,
     setAutoStartTimer,
     hapticCues,
@@ -58,11 +61,11 @@ export default function SettingsScreen() {
         <View style={styles.profileSnapshotCard}>
           <View style={styles.profileSnapshotLeft}>
             <View style={styles.avatarMini}>
-              <Text style={styles.avatarText}>AP</Text>
+              <Text style={styles.avatarText}>{profileInitials}</Text>
             </View>
             <View>
-              <Text style={styles.userNameLine}>Alex Pratama</Text>
-              <Text style={styles.userSubline}>Iron District Metro Gym</Text>
+              <Text style={styles.userNameLine}>{profileName}</Text>
+              <Text style={styles.userSubline}>{homeGymName || 'No Gym Selected'}</Text>
             </View>
           </View>
           <TouchableOpacity

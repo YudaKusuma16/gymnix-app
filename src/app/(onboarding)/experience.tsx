@@ -22,19 +22,19 @@ const EXPERIENCES: ExperienceOption[] = [
   {
     id: 'beginner',
     title: 'Beginner',
-    frequency: '• 1 - 2 days / week',
+    frequency: '1 - 2 days / week',
     description: 'Full body foundation routine',
   },
   {
     id: 'intermediate',
     title: 'Intermediate',
-    frequency: '• 3 - 4 days / week',
+    frequency: '3 - 4 days / week',
     description: 'Upper / Lower or Push-Pull-Legs split',
   },
   {
     id: 'advanced',
     title: 'Advanced / Athlete',
-    frequency: '• 5+ days / week',
+    frequency: '5+ days / week',
     description: 'High frequency body part specialization',
   },
 ];
@@ -79,20 +79,15 @@ export default function TrainingExperienceScreen() {
                   key={item.id}
                   activeOpacity={0.85}
                   onPress={() => setSelectedExp(item.id)}
-                  className={`p-5 rounded-2xl border ${
+                  className={`p-5 rounded-3xl border ${
                     isSelected
                       ? 'border-[#BE3144] bg-[#BE3144]/10'
                       : 'border-[#1F1F1F] bg-[#0A0A0A]'
                   }`}>
-                  <View className="flex-row items-center justify-between mb-2">
-                    <View className="flex-row items-center gap-2">
-                      <Text className="text-white text-lg font-bold">
-                        {item.title}
-                      </Text>
-                      <Text className="text-[#BE3144] text-xs font-semibold">
-                        {item.frequency}
-                      </Text>
-                    </View>
+                  <View className="flex-row items-center justify-between mb-1.5">
+                    <Text className="text-white text-lg font-bold">
+                      {item.title}
+                    </Text>
 
                     <View
                       className={`w-5 h-5 rounded-full items-center justify-center border-2 ${
@@ -107,7 +102,7 @@ export default function TrainingExperienceScreen() {
                   </View>
 
                   <Text className="text-[#71717A] text-sm">
-                    {item.description}
+                    {item.frequency} • {item.description}
                   </Text>
                 </TouchableOpacity>
               );

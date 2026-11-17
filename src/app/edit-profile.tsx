@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -11,25 +12,30 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from '@/utils/haptics';
+import { profileService } from '@/features/profile/services/profileService';
 
 export default function EditProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
   // Form states
-  const [fullName, setFullName] = useState('Alex Pratama');
-  const [username, setUsername] = useState('@alexpratama');
-  const [homeGym, setHomeGym] = useState('Iron District Metro Gym');
-  const [bio, setBio] = useState('Natural lifter');
+  const [fullName, setFullName] = useState('User');
+  const [username, setUsername] = useState('@user');
+  const [homeGym, setHomeGym] = useState('');
+  const [bio, setBio] = useState('');
   const [gender, setGender] = useState<'Male' | 'Female'>('Male');
-  const [age, setAge] = useState('24');
-  const [height, setHeight] = useState('178');
-  const [weight, setWeight] = useState('74.5');
-  const [goal, setGoal] = useState('Build Muscle');
-  const [experience, setExperience] = useState('Intermediate (1–3 yrs)');
-  const [frequency, setFrequency] = useState('5 Days / Week');
+  const [age, setAge] = useState('');
+  const [height, setHeight] = useState('');
+  const [weight, setWeight] = useState('');
+  const [goal, setGoal] = useState('');
+  const [experience, setExperience] = useState('');
+  const [frequency, setFrequency] = useState('');
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
 
   // Modals for Goal, Experience, Frequency
   const [activePicker, setActivePicker] = useState<'goal' | 'experience' | 'frequency' | null>(null);
@@ -55,9 +61,86 @@ export default function EditProfileScreen() {
     '6 Days / Week',
   ];
 
-  const handleSave = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.back();
+  useEffect(() => {
+    (async () => {
+      try {
+        const p = await profileService.getProfile();
+        if (p.fullName) setFullName(p.fullName);
+        if (p.username) setUsername(p.username);
+        if (p.homeGym?.name && p.homeGym.name !== 'No Gym Selected') setHomeGym(p.homeGym.name);
+        if (p.vitals.heightCm > 0) setHeight(p.vitals.heightCm.toString());
+        if (p.vitals.weightKg > 0) setWeight(p.vitals.weightKg.toString());
+        if (p.trainingProgram.primaryObjective && p.trainingProgram.primaryObjective !== '-') {
+          setGoal(p.trainingProgram.primaryObjective);
+        }
+        if (p.trainingProgram.experienceLevel && p.trainingProgram.experienceLevel !== '-') {
+          setExperience(p.trainingProgram.experienceLevel);
+        }
+        if (p.trainingProgram.frequency && p.trainingProgram.frequency !== '-') {
+          setFrequency(p.trainingProgram.frequency);
+        }
+        if (p.avatarUrl) {
+          setAvatarUri(p.avatarUrl);
+        }
+      } catch (e) {
+        console.warn('[EditProfile] Error loading profile:', e);
+      }
+    })();
+  }, []);
+
+  const handlePickAvatar = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setAvatarUri(result.assets[0].uri);
+      }
+    } catch (e) {
+      console.error('[EditProfile] Error picking image:', e);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      let finalAvatarPath: string | undefined = undefined;
+
+      // If user selected a local file, upload it to Supabase Storage 'avatars'
+      if (avatarUri && !avatarUri.startsWith('http')) {
+        const publicUrl = await profileService.uploadProfileAvatar(avatarUri);
+        if (publicUrl) {
+          finalAvatarPath = publicUrl;
+        }
+      }
+
+      await profileService.updateProfile({
+        fullName,
+        username,
+        homeGym,
+        bio,
+        gender,
+        height: parseFloat(height) || undefined,
+        weight: parseFloat(weight) || undefined,
+        goal,
+        experience,
+        frequency,
+        avatarPath: finalAvatarPath,
+      });
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.back();
+    } catch (e) {
+      console.error('[EditProfile] Save error:', e);
+      router.back();
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -79,11 +162,16 @@ export default function EditProfileScreen() {
 
         <TouchableOpacity
           onPress={handleSave}
+          disabled={isSaving}
           activeOpacity={0.7}
           className="px-2 py-1">
-          <Text className="text-[#BE3144] text-[15px] font-extrabold tracking-wide">
-            Save
-          </Text>
+          {isSaving ? (
+            <ActivityIndicator size="small" color="#BE3144" />
+          ) : (
+            <Text className="text-[#BE3144] text-[15px] font-extrabold tracking-wide">
+              Save
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -102,13 +190,23 @@ export default function EditProfileScreen() {
           <View className="items-center py-2 mb-4">
             <View className="relative w-20 h-20 mb-2">
               <View
-                className="w-full h-full rounded-2xl bg-[#141416] border-2 border-[#2E2E36] items-center justify-center"
+                className="w-full h-full rounded-2xl bg-[#141416] border-2 border-[#2E2E36] items-center justify-center overflow-hidden"
                 style={styles.cardBorder}>
-                <Text className="text-white text-2xl font-black">AP</Text>
+                {avatarUri ? (
+                  <Image
+                    source={{ uri: avatarUri }}
+                    style={{ width: '100%', height: '100%' }}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <Text className="text-white text-2xl font-black">
+                    {fullName.slice(0, 2).toUpperCase()}
+                  </Text>
+                )}
               </View>
               <TouchableOpacity
                 activeOpacity={0.8}
-                onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                onPress={handlePickAvatar}
                 className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#BE3144] border-2 border-black items-center justify-center">
                 <Ionicons name="camera" size={13} color="#FFFFFF" />
               </TouchableOpacity>
@@ -116,7 +214,7 @@ export default function EditProfileScreen() {
 
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
+              onPress={handlePickAvatar}>
               <Text className="text-[#BE3144] text-xs font-bold">
                 Edit Picture
               </Text>

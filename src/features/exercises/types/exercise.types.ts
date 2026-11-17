@@ -1,16 +1,27 @@
 export interface ExerciseItem {
   id: string;
   name: string;
-  body_part: string;
-  equipment: string;
-  target: string;
+  force?: string | null;
+  level?: string | null;
+  mechanic?: string | null;
+  equipment?: string | null;
+  primary_muscles: string[];
   secondary_muscles: string[];
   instructions: string[];
+  category?: string | null;
+  images: string[];
+  source?: string;
+  source_version?: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+
+  // Optional fields for backward compatibility
+  body_part?: string;
+  target?: string;
   description?: string;
   difficulty?: string;
-  category?: string;
   gif_url?: string;
-  created_at?: string;
 }
 
 export type ExerciseSortOrder = 'asc' | 'desc';
@@ -23,16 +34,24 @@ export interface ExerciseFilters {
 }
 
 export interface ExerciseDetailParams {
+  id?: string;
   name?: string;
   muscle?: string;
   equipment?: string;
+  level?: string;
+  category?: string;
+  force?: string;
+  mechanic?: string;
+  instructions?: string;
+  primaryMuscles?: string;
+  secondaryMuscles?: string;
+  images?: string;
+  mode?: string;
+
+  // Backward compatibility
   bodyPart?: string;
   description?: string;
-  instructions?: string;
-  secondaryMuscles?: string;
   difficulty?: string;
-  category?: string;
   gifUrl?: string;
-  mode?: string;
   [key: string]: string | string[] | undefined;
 }

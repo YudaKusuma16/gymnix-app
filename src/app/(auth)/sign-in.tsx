@@ -28,9 +28,10 @@ export default function SignInScreen() {
     showPassword,
     setShowPassword,
     loading,
-    connectingProvider,
+    googleLoading,
+    errorMessage,
     handleSignIn,
-    handleSocial,
+    handleGoogleSignIn,
     handleForgotPassword,
   } = useSignIn();
 
@@ -98,29 +99,49 @@ export default function SignInScreen() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 zIndex: 2,
-              }}
-              pointerEvents="none">
+              }}>
               <LottieView
                 source={bicepCurlAnimation}
                 autoPlay
                 loop
-                style={{ width: 255, height: 255 }}
+                style={{ width: '100%', height: '100%' }}
               />
             </View>
           </View>
 
-          {/* Form */}
-          <View style={{ marginTop: 6 }}>
+          {/* Error Message Banner */}
+          {errorMessage ? (
+            <View
+              style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                borderColor: 'rgba(239, 68, 68, 0.35)',
+                borderWidth: 1,
+                borderRadius: 12,
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                marginBottom: 14,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+              <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
+              <Text style={{ color: '#F87171', fontSize: 13, flex: 1, fontWeight: '500' }}>
+                {errorMessage}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Form Fields */}
+          <View style={{ gap: 14 }}>
             {/* Email Field */}
-            <View style={{ marginBottom: 18 }}>
+            <View style={{ gap: 6 }}>
               <Text
                 style={{
-                  color: '#71717A',
+                  color: '#A1A1AA',
                   fontSize: 11,
                   fontWeight: '700',
                   letterSpacing: 0.6,
                   textTransform: 'uppercase',
-                  marginBottom: 6,
                 }}>
                 EMAIL ADDRESS
               </Text>
@@ -139,10 +160,11 @@ export default function SignInScreen() {
                 <TextInput
                   value={email}
                   onChangeText={setEmail}
-                  placeholder="athlete@gymnix.fit"
+                  placeholder="name@example.com"
                   placeholderTextColor="#52525B"
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoCorrect={false}
                   style={{
                     flex: 1,
                     color: '#FFFFFF',
@@ -154,17 +176,16 @@ export default function SignInScreen() {
             </View>
 
             {/* Password Field */}
-            <View style={{ marginBottom: 18 }}>
+            <View style={{ gap: 6 }}>
               <View
                 style={{
                   flexDirection: 'row',
-                  alignItems: 'center',
                   justifyContent: 'space-between',
-                  marginBottom: 6,
+                  alignItems: 'center',
                 }}>
                 <Text
                   style={{
-                    color: '#71717A',
+                    color: '#A1A1AA',
                     fontSize: 11,
                     fontWeight: '700',
                     letterSpacing: 0.6,
@@ -226,7 +247,7 @@ export default function SignInScreen() {
             {/* Submit Button */}
             <TouchableOpacity
               onPress={handleSignIn}
-              disabled={loading || !!connectingProvider}
+              disabled={loading || googleLoading}
               activeOpacity={0.8}
               style={{
                 width: '100%',
@@ -238,7 +259,7 @@ export default function SignInScreen() {
                 flexDirection: 'row',
                 gap: 8,
                 marginTop: 10,
-                opacity: loading || !!connectingProvider ? 0.8 : 1,
+                opacity: loading || googleLoading ? 0.8 : 1,
               }}>
               {loading ? (
                 <>
@@ -247,10 +268,6 @@ export default function SignInScreen() {
                     Signing In...
                   </Text>
                 </>
-              ) : connectingProvider ? (
-                <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>
-                  Connecting with {connectingProvider}...
-                </Text>
               ) : (
                 <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>
                   Sign In
@@ -280,52 +297,34 @@ export default function SignInScreen() {
             <View style={{ flex: 1, height: 1, backgroundColor: '#27272A' }} />
           </View>
 
-          {/* Social Buttons */}
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <TouchableOpacity
-              onPress={() => handleSocial('Apple')}
-              activeOpacity={0.8}
-              style={{
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                paddingVertical: 13,
-                paddingHorizontal: 16,
-                backgroundColor: '#18181B',
-                borderWidth: 1,
-                borderColor: '#27272A',
-                borderRadius: 14,
-              }}>
-              <Ionicons name="logo-apple" size={18} color="#FFFFFF" />
-              <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
-                Apple
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => handleSocial('Google')}
-              activeOpacity={0.8}
-              style={{
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                paddingVertical: 13,
-                paddingHorizontal: 16,
-                backgroundColor: '#18181B',
-                borderWidth: 1,
-                borderColor: '#27272A',
-                borderRadius: 14,
-              }}>
-              <Ionicons name="logo-google" size={17} color="#EA4335" />
-              <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
-                Google
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {/* Social Button: Google Only */}
+          <TouchableOpacity
+            onPress={handleGoogleSignIn}
+            disabled={loading || googleLoading}
+            activeOpacity={0.8}
+            style={{
+              width: '100%',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              paddingVertical: 14,
+              paddingHorizontal: 16,
+              backgroundColor: '#18181B',
+              borderWidth: 1,
+              borderColor: '#27272A',
+              borderRadius: 14,
+              opacity: loading || googleLoading ? 0.7 : 1,
+            }}>
+            {googleLoading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons name="logo-google" size={19} color="#EA4335" />
+            )}
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
+              {googleLoading ? 'Connecting with Google...' : 'Continue with Google'}
+            </Text>
+          </TouchableOpacity>
 
           {/* Spacer */}
           <View style={{ flex: 1, minHeight: 30 }} />

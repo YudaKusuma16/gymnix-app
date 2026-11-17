@@ -1,53 +1,69 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { Share } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from '@/utils/haptics';
 import { AthleteProfile } from '../types/profile.types';
-
-const INITIAL_PROFILE: AthleteProfile = {
-  id: 'usr_01',
-  fullName: 'Alex Pratama',
-  username: '@alexpratama',
-  initials: 'AP',
-  memberSince: 'Jan 2024',
-  tier: 'Pro Athlete',
-  homeGym: {
-    id: 'gym_01',
-    name: 'Iron District Metro Gym',
-    distance: '0.8 km',
-  },
-  vitals: {
-    heightCm: 178,
-    weightKg: 74.5,
-    weightDeltaWk: -0.3,
-    bmi: 23.5,
-    bmiStatus: 'Optimal',
-    calorieCap: 2450,
-    calorieMode: 'BMR/TDEE Calibrated',
-    currentStreakDays: 4,
-    bestStreakDays: 18,
-  },
-  personalRecords: {
-    wilksScore: 382.4,
-    totalVolumeKg: 430,
-    squatKg: 140,
-    squatDate: '2w ago',
-    benchKg: 105,
-    benchDate: 'Yesterday',
-    isBenchPr: true,
-    deadliftKg: 185,
-    deadliftDate: '1mo ago',
-  },
-  trainingProgram: {
-    primaryObjective: 'Hypertrophy (Muscle Mass)',
-    frequency: '4 - 5 Days / Week',
-    splitType: 'Upper / Lower Progression',
-    experienceLevel: 'Advanced Lifter (3+ yrs)',
-  },
-};
+import { profileService, DEFAULT_PROFILE } from '../services/profileService';
 
 export function useProfile() {
   const router = useRouter();
-  const [profile] = useState<AthleteProfile>(INITIAL_PROFILE);
+  const [profile, setProfile] = useState<AthleteProfile>(DEFAULT_PROFILE);
+  const [lifetimeMilestones, setLifetimeMilestones] = useState({
+    totalTonnageTon: 0,
+    totalWorkouts: 0,
+    totalHours: 0,
+  });
+  const [heatmapData, setHeatmapData] = useState<{
+    gridWeeks?: { date: string; level: 0 | 1 | 2 }[][];
+    currentStreakWeeks: number;
+    totalActiveDays: number;
+  }>({
+    currentStreakWeeks: 0,
+    totalActiveDays: 0,
+  });
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const reloadProfile = useCallback(async () => {
+    try {
+      const [fetchedProfile, milestones, heatmap] = await Promise.all([
+        profileService.getProfile(),
+        profileService.getLifetimeMilestones(),
+        profileService.getHeatmapData(),
+      ]);
+      setProfile(fetchedProfile);
+      setLifetimeMilestones(milestones);
+      setHeatmapData(heatmap);
+    } catch (e) {
+      console.warn('[useProfile] Could not fetch profile data:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    Promise.all([
+      profileService.getProfile(),
+      profileService.getLifetimeMilestones(),
+      profileService.getHeatmapData(),
+    ])
+      .then(([fetchedProfile, milestones, heatmap]) => {
+        if (isMounted) {
+          setProfile(fetchedProfile);
+          setLifetimeMilestones(milestones);
+          setHeatmapData(heatmap);
+          setLoading(false);
+        }
+      })
+      .catch((e) => {
+        if (isMounted) {
+          console.warn('[useProfile] Initial load warning:', e);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const navigateToSettings = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -71,10 +87,39 @@ export function useProfile() {
     });
   }, [router, profile.homeGym]);
 
+  const navigateToSignIn = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/(auth)/sign-in');
+  }, [router]);
+
+  const shareAthletePassport = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      await Share.share({
+        title: `${profile.fullName} • Gymnix Athlete Passport`,
+        message:
+          `🏋️ ${profile.fullName} (${profile.username}) on Gymnix Athlete OS\n` +
+          `• SBD Total: ${profile.personalRecords.totalVolumeKg} KG (Squat ${profile.personalRecords.squatKg}kg | Bench ${profile.personalRecords.benchKg}kg | Deadlift ${profile.personalRecords.deadliftKg}kg)\n` +
+          `• Lifetime Load: ${lifetimeMilestones.totalTonnageTon} T across ${lifetimeMilestones.totalWorkouts} sessions\n` +
+          `• Discipline Streak: ${profile.vitals.currentStreakDays} Days\n\n` +
+          `Track your progressive overload with Gymnix!`,
+      });
+    } catch {
+      // User dismissed share dialog
+    }
+  }, [profile, lifetimeMilestones]);
+
   return {
     profile,
+    isAuthenticated: Boolean(profile.id),
+    lifetimeMilestones,
+    heatmapData,
+    loading,
+    reloadProfile,
     navigateToSettings,
     navigateToEditProfile,
     navigateToHomeGym,
+    navigateToSignIn,
+    shareAthletePassport,
   };
 }

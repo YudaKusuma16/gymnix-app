@@ -16,6 +16,7 @@ export interface NextExerciseItem {
 
 export interface WorkoutSessionSummary {
   id?: string;
+  title?: string;
   durationSeconds: number;
   totalVolumeKg?: number;
   completedSetsCount: number;

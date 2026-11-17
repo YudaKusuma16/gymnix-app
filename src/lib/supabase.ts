@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import type { Database } from '@/types/database.types';
 
 const ExpoSecureStoreAdapter = {
   getItem: (key: string) => {
@@ -40,12 +41,14 @@ const ExpoSecureStoreAdapter = {
 export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     storage: ExpoSecureStoreAdapter,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // On web, Supabase must read tokens from the URL after OAuth redirect.
+    // On native, we handle the redirect ourselves via deep linking.
+    detectSessionInUrl: Platform.OS === 'web',
   },
 });
 

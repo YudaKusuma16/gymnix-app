@@ -7,12 +7,15 @@ export function useExerciseDetail(params: ExerciseDetailParams) {
   const router = useRouter();
   const [isBookmarked, setIsBookmarked] = useState(false);
 
-  const title = params.name || 'Bench Press - Barbell';
-  const muscle = params.muscle || 'Chest';
-  const equipment = params.equipment || 'Barbell';
+  const title = params.name || 'Exercise Detail';
+  const muscle = params.muscle || 'General';
+  const equipment = params.equipment || 'Body Only';
   const description = params.description || '';
-  const difficulty = params.difficulty || 'Intermediate';
+  const difficulty = params.difficulty || params.level || 'Beginner';
+  const level = params.level || params.difficulty || 'Beginner';
   const category = params.category || 'Strength';
+  const force = params.force || '';
+  const mechanic = params.mechanic || '';
   const bodyPart = params.bodyPart || '';
   const gifUrl = params.gifUrl || '';
 
@@ -25,6 +28,18 @@ export function useExerciseDetail(params: ExerciseDetailParams) {
     instructionsList = [];
   }
 
+  let primaryList: string[] = [];
+  try {
+    if (params.primaryMuscles) {
+      primaryList = JSON.parse(params.primaryMuscles);
+    }
+  } catch {
+    primaryList = [];
+  }
+  if (primaryList.length === 0 && params.muscle) {
+    primaryList = [params.muscle.toLowerCase()];
+  }
+
   let secondaryList: string[] = [];
   try {
     if (params.secondaryMuscles) {
@@ -34,6 +49,15 @@ export function useExerciseDetail(params: ExerciseDetailParams) {
     secondaryList = [];
   }
 
+  let imagesList: string[] = [];
+  try {
+    if (params.images) {
+      imagesList = JSON.parse(params.images);
+    }
+  } catch {
+    imagesList = [];
+  }
+
   const toggleBookmark = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsBookmarked((prev) => !prev);
@@ -41,7 +65,16 @@ export function useExerciseDetail(params: ExerciseDetailParams) {
 
   const handleLogExercise = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.push('/workout-active');
+    router.push({
+      pathname: '/workout-active',
+      params: {
+        title: `${title} Session`,
+        exerciseName: title,
+        muscle,
+        equipment,
+        exercises: JSON.stringify([title]),
+      },
+    });
   };
 
   const goBack = () => {
@@ -55,11 +88,16 @@ export function useExerciseDetail(params: ExerciseDetailParams) {
     equipment,
     description,
     difficulty,
+    level,
     category,
+    force,
+    mechanic,
     bodyPart,
     gifUrl,
     instructionsList,
+    primaryList,
     secondaryList,
+    imagesList,
     isBookmarked,
     toggleBookmark,
     handleLogExercise,

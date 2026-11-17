@@ -43,7 +43,7 @@ export default function AssistantScreen() {
     {
       id: '1',
       sender: 'ai',
-      text: 'Hey Alex! Great job on your Push Day session yesterday. Barbell bench velocity was consistent across all 3 sets.',
+      text: 'Hey User! Great job on your Push Day session yesterday. Barbell bench velocity was consistent across all 3 sets.',
       recommendation: 'Recommendation: Add +2.5 kg to top set.',
       timestamp: '10:42 AM',
     },

@@ -183,7 +183,7 @@ export default function GymsScreen() {
                     <Text style={styles.featuredBadgeText}>CLOSEST GYM</Text>
                   </View>
                   <View style={styles.featuredOpenBadge}>
-                    <Text style={styles.featuredOpenText}>Live FSQ</Text>
+                    <Text style={styles.featuredOpenText}>Google Places</Text>
                   </View>
                 </View>
 

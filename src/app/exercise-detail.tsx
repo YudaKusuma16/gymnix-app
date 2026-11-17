@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -12,10 +12,18 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
 import { useExerciseDetail } from '@/features/exercises/hooks/useExerciseDetail';
 import { ExerciseDetailParams } from '@/features/exercises/types/exercise.types';
+import { MuscleHighlighter } from '@/features/exercises/components/MuscleHighlighter';
+import { getExerciseImageUrl } from '@/features/exercises/utils/muscleMapping';
+import * as Haptics from '@/utils/haptics';
+
+type DetailTab = 'Summary' | 'History' | 'How to';
 
 export default function ExerciseDetailScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<ExerciseDetailParams>();
+
+  // Active Tab
+  const [activeTab, setActiveTab] = useState<DetailTab>('Summary');
 
   // ViewModel hook
   const {
@@ -23,17 +31,38 @@ export default function ExerciseDetailScreen() {
     muscle,
     equipment,
     description,
-    difficulty,
-    category,
-    bodyPart,
     gifUrl,
     instructionsList,
+    primaryList,
     secondaryList,
+    imagesList,
     isBookmarked,
     toggleBookmark,
     handleLogExercise,
     goBack,
   } = useExerciseDetail(params);
+
+  // Active image phase index (0: Start position, 1: Contraction position)
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  // Auto-switch between phase 0 and phase 1 like an animation video
+  useEffect(() => {
+    if (imagesList.length <= 1) return;
+    const timer = setInterval(() => {
+      setActiveImageIndex((prev) => (prev + 1) % imagesList.length);
+    }, 850);
+    return () => clearInterval(timer);
+  }, [imagesList.length]);
+
+  const heroImageUrl =
+    imagesList.length > 0
+      ? getExerciseImageUrl(imagesList[activeImageIndex] || imagesList[0])
+      : gifUrl || null;
+
+  const handleTabPress = (tab: DetailTab) => {
+    Haptics.selectionAsync();
+    setActiveTab(tab);
+  };
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-black">
@@ -68,28 +97,31 @@ export default function ExerciseDetailScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingHorizontal: 18,
-          paddingTop: 16,
           paddingBottom: insets.bottom + 90,
         }}
-        className="flex-1">
-        {/* Media Hero Overview */}
-        <View className="items-center py-2 mb-6">
-          {gifUrl ? (
+        className="flex-1 bg-black">
+        {/* Full-width Edge-to-Edge Hero Image */}
+        {heroImageUrl ? (
+          <View className="w-full aspect-[3/2] bg-black items-center justify-center overflow-hidden mb-4">
+            <Image
+              source={{ uri: heroImageUrl }}
+              style={{ width: '100%', height: '100%' }}
+              contentFit="cover"
+              transition={180}
+            />
+            {imagesList.length > 1 && (
+              <View className="absolute top-3 right-3 bg-black/75 px-2.5 py-1 rounded-full flex-row items-center gap-1.5 border border-white/10">
+                <Ionicons name="repeat" size={12} color="#BE3144" />
+                <Text className="text-white text-[10.5px] font-semibold tracking-wide">
+                  {activeImageIndex === 0 ? 'Start' : 'Peak'}
+                </Text>
+              </View>
+            )}
+          </View>
+        ) : (
+          <View className="items-center py-4 mb-3">
             <View
-              className="w-full aspect-square rounded-2xl bg-[#0D0D10] border border-[#222226] items-center justify-center mb-4 overflow-hidden shadow-lg"
-              style={styles.cardBorder}>
-              <Image
-                source={{ uri: gifUrl }}
-                style={{ width: '100%', height: '100%' }}
-                contentFit="cover"
-                transition={200}
-              />
-            </View>
-          ) : (
-            <View
-              className="w-16 h-16 rounded-2xl bg-[#BE3144]/15 border border-[#BE3144]/35 items-center justify-center mb-3.5 shadow-lg"
-              style={styles.cardBorder}>
+              className="w-16 h-16 rounded-2xl bg-black border border-[#BE3144]/35 items-center justify-center shadow-lg">
               <Ionicons
                 name={
                   equipment.toLowerCase().includes('barbell')
@@ -100,149 +132,263 @@ export default function ExerciseDetailScreen() {
                 color="#BE3144"
               />
             </View>
-          )}
-          <Text className="text-white text-2xl font-black text-center tracking-tight">
-            {title}
-          </Text>
-          <View className="flex-row items-center gap-1.5 mt-1.5">
-            <Ionicons name="locate-outline" size={14} color="#BE3144" />
-            <Text className="text-[#BE3144] text-xs font-bold">
-              {muscle} Focus • {equipment}
+          </View>
+        )}
+
+        {/* Padded Content Body */}
+        <View className="px-4">
+          {/* Title & Metadata (All Left-Aligned) */}
+          <View className="items-start mb-4">
+            <Text className="text-white text-2xl font-black text-left tracking-tight">
+              {title}
+            </Text>
+
+            <Text className="text-[#BE3144] text-xs font-bold mt-1 text-left">
+              {muscle} • {equipment}
             </Text>
           </View>
 
-          {/* Spec Chips */}
-          <View className="flex-row flex-wrap justify-center gap-1.5 mt-3.5">
-            {[category, difficulty, bodyPart || muscle]
-              .filter(Boolean)
-              .map((chip, i) => (
-                <View
-                  key={i}
-                  className="bg-[#141416] border border-[#27272A] px-2.5 py-1 rounded-lg"
-                  style={styles.pillBorder}>
-                  <Text className="text-[#A1A1AA] text-[11px] font-semibold">
-                    {chip}
-                  </Text>
-                </View>
-              ))}
-          </View>
-        </View>
+          {/* Optional Description / Overview (Left-Aligned) */}
+          {description ? (
+            <View className="mb-4">
+              <Text className="text-[#D4D4D8] text-[12.5px] leading-5 font-normal text-left">
+                {description}
+              </Text>
+            </View>
+          ) : null}
 
-        {/* Description / Overview (No card wrapper, directly on background) */}
-        {description ? (
-          <View className="mb-6 px-1">
-            <Text className="text-[#71717A] text-[11px] font-extrabold uppercase tracking-wider mb-2">
-              OVERVIEW
-            </Text>
-            <Text className="text-[#D4D4D8] text-[13px] leading-6 font-normal">
-              {description}
-            </Text>
-          </View>
-        ) : null}
-
-        {/* TARGET MUSCLES */}
-        <View className="mb-6">
-          <Text className="text-[#71717A] text-[11px] font-extrabold tracking-wider uppercase mb-2.5 pl-1">
-            TARGET ANATOMY
-          </Text>
-
-          <View className="bg-[#0A0A0A] border border-[#27272A] rounded-2xl p-4 gap-3" style={styles.cardBorder}>
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-2">
-                <View className="w-2.5 h-2.5 rounded-full bg-[#BE3144]" />
-                <Text className="text-[#A1A1AA] text-xs font-semibold">Primary Target</Text>
+          {/* 3. 2x2 Quick Stats Grid (Best e1RM, Heaviest, Workouts, Last done - Unboxed) */}
+          <View className="mb-7 px-1">
+          {/* Row 1: Best e1RM & Heaviest */}
+          <View className="flex-row justify-between mb-3">
+            {/* Best e1RM */}
+            <View className="flex-1 flex-row items-center gap-3">
+              <View className="w-10 h-10 rounded-xl bg-[#141417] items-center justify-center border border-[#222226]">
+                <Ionicons name="trophy-outline" size={19} color="#9E9EA8" />
               </View>
-              <Text className="text-white text-xs font-bold">{muscle}</Text>
+              <View className="flex-1">
+                <Text className="text-[#8E95A5] text-[11px] font-semibold">
+                  Best e1RM
+                </Text>
+                <Text className="text-white text-[15px] font-bold mt-0.5">
+                  -
+                </Text>
+              </View>
             </View>
 
-            {secondaryList.length > 0 && (
-              <>
-                <View className="h-[1px] bg-[#1E1E22]" />
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-2">
-                    <View className="w-2.5 h-2.5 rounded-full bg-[#52525B]" />
-                    <Text className="text-[#A1A1AA] text-xs font-semibold">Secondary Target</Text>
-                  </View>
-                  <Text className="text-white text-xs font-bold">
-                    {secondaryList.join(', ')}
-                  </Text>
-                </View>
-              </>
-            )}
+            {/* Heaviest */}
+            <View className="flex-1 flex-row items-center gap-3 pl-3">
+              <View className="w-10 h-10 rounded-xl bg-[#141417] items-center justify-center border border-[#222226]">
+                <Ionicons name="barbell-outline" size={19} color="#9E9EA8" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-[#8E95A5] text-[11px] font-semibold">
+                  Heaviest
+                </Text>
+                <Text className="text-white text-[15px] font-bold mt-0.5">
+                  -
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Row 2: Workouts & Last done */}
+          <View className="flex-row justify-between">
+            {/* Workouts */}
+            <View className="flex-1 flex-row items-center gap-3">
+              <View className="w-10 h-10 rounded-xl bg-[#141417] items-center justify-center border border-[#222226]">
+                <Ionicons name="sync-outline" size={19} color="#9E9EA8" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-[#8E95A5] text-[11px] font-semibold">
+                  Workouts
+                </Text>
+                <Text className="text-white text-[15px] font-bold mt-0.5">
+                  0
+                </Text>
+              </View>
+            </View>
+
+            {/* Last done */}
+            <View className="flex-1 flex-row items-center gap-3 pl-3">
+              <View className="w-10 h-10 rounded-xl bg-[#141417] items-center justify-center border border-[#222226]">
+                <Ionicons name="calendar-outline" size={19} color="#9E9EA8" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-[#8E95A5] text-[11px] font-semibold">
+                  Last done
+                </Text>
+                <Text className="text-white text-[15px] font-bold mt-0.5">
+                  Never
+                </Text>
+              </View>
+            </View>
           </View>
         </View>
 
-        {/* STEP-BY-STEP INSTRUCTIONS (Single column container, clean numbers without circular badge) */}
-        <View className="mb-6">
-          <Text className="text-[#71717A] text-[11px] font-extrabold tracking-wider uppercase mb-2.5 pl-1">
-            STEP-BY-STEP EXECUTION
-          </Text>
-
-          <View
-            className="bg-[#0A0A0A] border border-[#27272A] rounded-2xl p-5"
-            style={styles.cardBorder}>
-            {instructionsList.length > 0 ? (
-              instructionsList.map((step, idx) => (
-                <View key={idx}>
-                  <View className="flex-row items-start gap-3 pl-1">
-                    <Text
-                      className="text-[#BE3144] text-[13.5px] font-bold w-6 pt-0.5"
-                      style={styles.tabularNums}>
-                      {idx + 1}.
-                    </Text>
-                    <Text className="text-[#E4E4E7] text-[13px] leading-relaxed font-normal flex-1">
-                      {step}
-                    </Text>
-                  </View>
-                  {idx < instructionsList.length - 1 && (
-                    <View className="h-[1px] bg-[#1E1E22] my-3.5 ml-1" />
-                  )}
-                </View>
-              ))
-            ) : (
-              <Text className="text-[#71717A] text-xs">
-                Maintain controlled eccentric tempo, brace core, and achieve full range of motion.
+        {/* 4. Tab Navigation: Summary | History | How to (Brought more towards center) */}
+        <View className="flex-row items-center px-8 border-b border-[#1E1E22] mb-4">
+          {/* Tab 1: Summary (Aligned Left) */}
+          <TouchableOpacity
+            onPress={() => handleTabPress('Summary')}
+            activeOpacity={0.7}
+            className="flex-1 items-start pb-2.5">
+            <View className="items-center relative">
+              <Text
+                className={`text-[14px] ${
+                  activeTab === 'Summary'
+                    ? 'text-white font-bold'
+                    : 'text-[#71717A] font-semibold'
+                }`}>
+                Summary
               </Text>
-            )}
-          </View>
+              {activeTab === 'Summary' && (
+                <View className="absolute bottom-[-11px] left-0 right-0 h-[2.5px] bg-[#BE3144] rounded-full" />
+              )}
+            </View>
+          </TouchableOpacity>
+
+          {/* Tab 2: History (Centered) */}
+          <TouchableOpacity
+            onPress={() => handleTabPress('History')}
+            activeOpacity={0.7}
+            className="flex-1 items-center pb-2.5">
+            <View className="items-center relative">
+              <Text
+                className={`text-[14px] ${
+                  activeTab === 'History'
+                    ? 'text-white font-bold'
+                    : 'text-[#71717A] font-semibold'
+                }`}>
+                History
+              </Text>
+              {activeTab === 'History' && (
+                <View className="absolute bottom-[-11px] left-0 right-0 h-[2.5px] bg-[#BE3144] rounded-full" />
+              )}
+            </View>
+          </TouchableOpacity>
+
+          {/* Tab 3: How to (Aligned Right) */}
+          <TouchableOpacity
+            onPress={() => handleTabPress('How to')}
+            activeOpacity={0.7}
+            className="flex-1 items-end pb-2.5">
+            <View className="items-center relative">
+              <Text
+                className={`text-[14px] ${
+                  activeTab === 'How to'
+                    ? 'text-white font-bold'
+                    : 'text-[#71717A] font-semibold'
+                }`}>
+                How to
+              </Text>
+              {activeTab === 'How to' && (
+                <View className="absolute bottom-[-11px] left-0 right-0 h-[2.5px] bg-[#BE3144] rounded-full" />
+              )}
+            </View>
+          </TouchableOpacity>
         </View>
 
-        {/* YOUR STATS Section */}
-        <View className="mb-4">
-          <Text className="text-[#71717A] text-[11px] font-extrabold tracking-wider uppercase mb-2 pl-1">
-            YOUR STATS & PRs
-          </Text>
+        {/* 5. TAB CONTENT */}
+        {activeTab === 'Summary' && (
+          <View>
+            {/* Card 1: Muscle worked Anatomy */}
+            <MuscleHighlighter
+              primaryMuscles={primaryList}
+              secondaryMuscles={secondaryList}
+              gender="male"
+            />
 
-          <View
-            className="bg-[#0A0A0C] border border-[#1E1E22] rounded-2xl p-4 flex-row items-center justify-around"
-            style={styles.cardBorder}>
-            <View className="items-center">
-              <Text className="text-white text-lg font-black" style={styles.tabularNums}>
-                100 kg
-              </Text>
-              <Text className="text-[#71717A] text-[10px] font-bold uppercase mt-0.5">
-                Est. 1RM
+            {/* Card 2: Personal records */}
+            <View
+              className="bg-black border border-[#222226] rounded-2xl p-4 mb-3.5"
+              style={styles.cardBorder}>
+              <View className="flex-row items-center gap-2">
+                <Ionicons name="trophy" size={17} color="#F59E0B" />
+                <Text className="text-white text-sm font-bold">
+                  Personal records
+                </Text>
+              </View>
+              <Text className="text-[#8E95A5] text-[12.5px] mt-2 leading-relaxed">
+                No records yet. Log this exercise to see them.
               </Text>
             </View>
 
-            <View className="w-[1px] h-7 bg-[#24242A]" />
-
-            <View className="items-center">
-              <Text className="text-white text-lg font-black" style={styles.tabularNums}>
-                8 Reps
+            {/* Card 3: Estimated 1RM over time */}
+            <View
+              className="bg-black border border-[#222226] rounded-2xl p-4 mb-4"
+              style={styles.cardBorder}>
+              <Text className="text-white text-sm font-bold mb-8">
+                Estimated 1RM over time (kg, Epley)
               </Text>
-              <Text className="text-[#71717A] text-[10px] font-bold uppercase mt-0.5">
-                Top Set Reps
-              </Text>
+              <View className="py-6 items-center justify-center">
+                <Text className="text-[#8E95A5] text-xs text-center leading-relaxed">
+                  The line starts after your first workout with this.
+                </Text>
+              </View>
             </View>
           </View>
+        )}
+
+        {activeTab === 'History' && (
+          <View
+            className="bg-black border border-[#222226] rounded-2xl p-7 items-center justify-center mb-4 min-h-[190px]"
+            style={styles.cardBorder}>
+            <View className="w-12 h-12 rounded-2xl bg-black items-center justify-center border border-[#282830] mb-3">
+              <Ionicons name="calendar-outline" size={24} color="#BE3144" />
+            </View>
+            <Text className="text-white text-sm font-bold text-center">
+              No Workout History Yet
+            </Text>
+            <Text className="text-[#8E95A5] text-xs text-center mt-1 leading-relaxed max-w-[260px]">
+              Workouts you complete with this exercise will appear here with your sets, reps, and weights.
+            </Text>
+          </View>
+        )}
+
+        {activeTab === 'How to' && (
+          <View>
+            {/* Step-by-Step Execution Card */}
+            <View
+              className="bg-black border border-[#222226] rounded-2xl p-5 mb-4"
+              style={styles.cardBorder}>
+              <Text className="text-[#8E95A5] text-[11px] font-extrabold tracking-wider uppercase mb-3.5">
+                STEP-BY-STEP EXECUTION
+              </Text>
+
+              {instructionsList.length > 0 ? (
+                instructionsList.map((step, idx) => (
+                  <View key={idx}>
+                    <View className="flex-row items-start gap-3">
+                      <Text
+                        className="text-[#BE3144] text-[13.5px] font-bold w-6 pt-0.5"
+                        style={styles.tabularNums}>
+                        {idx + 1}.
+                      </Text>
+                      <Text className="text-[#E4E4E7] text-[13px] leading-relaxed font-normal flex-1">
+                        {step}
+                      </Text>
+                    </View>
+                    {idx < instructionsList.length - 1 && (
+                      <View className="h-[1px] bg-[#1E1E24] my-3.5 ml-1" />
+                    )}
+                  </View>
+                ))
+              ) : (
+                <Text className="text-[#8E95A5] text-xs leading-relaxed">
+                  Maintain controlled eccentric tempo, brace core, and achieve full range of motion.
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
         </View>
       </ScrollView>
 
-      {/* 3. Sticky Bottom CTA Bar */}
+      {/* 4. Sticky Bottom CTA Bar */}
       <View
         style={{ paddingBottom: Math.max(insets.bottom, 16) }}
-        className="absolute bottom-0 left-0 right-0 p-4 bg-black/90 border-t border-[#1F1F1F]">
+        className="absolute bottom-0 left-0 right-0 p-4 bg-black/95 border-t border-[#1F1F1F]">
         <TouchableOpacity
           onPress={handleLogExercise}
           activeOpacity={0.88}

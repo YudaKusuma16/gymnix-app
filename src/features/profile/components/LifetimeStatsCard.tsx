@@ -9,9 +9,9 @@ interface LifetimeStatsCardProps {
 }
 
 export const LifetimeStatsCard = React.memo(function LifetimeStatsCard({
-  totalTonnageTon = 248.5,
-  totalWorkouts = 118,
-  totalHours = 142,
+  totalTonnageTon = 0,
+  totalWorkouts = 0,
+  totalHours = 0,
 }: LifetimeStatsCardProps) {
   return (
     <View style={styles.container}>
@@ -19,9 +19,6 @@ export const LifetimeStatsCard = React.memo(function LifetimeStatsCard({
         <View>
           <Text style={styles.title}>Lifetime Milestones</Text>
           <Text style={styles.subtitle}>Accumulated athlete work capacity</Text>
-        </View>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>SINCE 2024</Text>
         </View>
       </View>
 
@@ -96,29 +93,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 2,
   },
-  badge: {
-    backgroundColor: '#161418',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#261820',
-  },
-  badgeText: {
-    color: '#A1A1AA',
-    fontSize: 9.5,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-  },
   statsCard: {
     flexDirection: 'row',
-    backgroundColor: '#0C0C0E',
-    borderRadius: 16,
+    backgroundColor: '#000000',
+    borderRadius: 20,
     borderCurve: 'continuous',
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#1D1D22',
+    borderColor: '#222226',
     alignItems: 'center',
     justifyContent: 'space-between',
   },

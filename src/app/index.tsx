@@ -18,7 +18,7 @@ export default function SplashScreen() {
     scale.value = withSpring(1, { damping: 12, stiffness: 90 });
 
     const timer = setTimeout(() => {
-      router.replace('/(auth)/sign-in');
+      router.replace('/(tabs)/home');
     }, 2000);
 
     return () => clearTimeout(timer);
@@ -30,7 +30,7 @@ export default function SplashScreen() {
   }));
 
   const handleSkip = () => {
-    router.replace('/(auth)/sign-in');
+    router.replace('/(tabs)/home');
   };
 
   return (

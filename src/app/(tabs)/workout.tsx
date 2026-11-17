@@ -82,46 +82,41 @@ export default function WorkoutScreen() {
           })}
         </View>
 
-        {/* 3. Workout Setup Section (matches z-Html) */}
+        {/* 3. Workout Setup Section (Unboxed) */}
         <View className="mb-5">
-          <Text className="text-[#71717A] text-[11px] font-extrabold tracking-wider uppercase mb-2 pl-0.5">
+          <Text className="text-[#71717A] text-[11px] font-extrabold tracking-wider uppercase mb-1 pl-0.5">
             Workout Setup
           </Text>
-          <View
-            className="bg-[#0A0A0A] border border-[#27272A] rounded-2xl overflow-hidden"
-            style={styles.cardBorder}>
-            <TouchableOpacity
-              onPress={startNewWorkout}
-              activeOpacity={0.75}
-              className="p-4 flex-row items-center justify-between active:bg-[#1A1A1A]">
-              <View>
-                <Text className="text-white text-[15px] font-bold">
-                  Start new workout
-                </Text>
-                <Text className="text-[#71717A] text-xs mt-0.5">
-                  make a custom workout
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#71717A" />
-            </TouchableOpacity>
 
-            <View className="h-[1px] bg-[#222226] mx-4" />
+          <TouchableOpacity
+            onPress={startNewWorkout}
+            activeOpacity={0.7}
+            className="py-3 px-1 flex-row items-center justify-between">
+            <View>
+              <Text className="text-white text-[15px] font-bold">
+                Start new workout
+              </Text>
+              <Text className="text-[#71717A] text-xs mt-0.5">
+                make a custom workout
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#71717A" />
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={browseExerciseList}
-              activeOpacity={0.75}
-              className="p-4 flex-row items-center justify-between active:bg-[#1A1A1A]">
-              <View>
-                <Text className="text-white text-[15px] font-bold">
-                  Exercise list
-                </Text>
-                <Text className="text-[#71717A] text-xs mt-0.5">
-                  Browse exercise movements
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#71717A" />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            onPress={browseExerciseList}
+            activeOpacity={0.7}
+            className="py-3 px-1 flex-row items-center justify-between">
+            <View>
+              <Text className="text-white text-[15px] font-bold">
+                Exercise list
+              </Text>
+              <Text className="text-[#71717A] text-xs mt-0.5">
+                Browse exercise movements
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#71717A" />
+          </TouchableOpacity>
         </View>
 
       </ScrollView>

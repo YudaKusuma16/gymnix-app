@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as Location from 'expo-location';
 import * as Haptics from '@/utils/haptics';
 import { GymItem } from '../types/gym.types';
-import { fetchNearbyGymsFromFoursquare } from '@/services/foursquare.service';
+import { fetchNearbyGymsFromFoursquare } from '../services/foursquare.service';
+import { fetchNearbyGymsFromGooglePlaces } from '../services/googlePlaces.service';
 
 const DEFAULT_LATITUDE = -6.2088;
 const DEFAULT_LONGITUDE = 106.8456;
@@ -81,7 +82,15 @@ export function useGymList() {
       const { lat, lng, name } = await resolveCoordinates();
       setLocationName(name);
 
-      const liveGyms = await fetchNearbyGymsFromFoursquare(lat, lng, 10000);
+      let liveGyms = await fetchNearbyGymsFromGooglePlaces(lat, lng, 8000).catch((err) => {
+        console.warn('[useGymList] Google Places failed, falling back to Foursquare:', err);
+        return [];
+      });
+
+      if (!liveGyms || liveGyms.length === 0) {
+        liveGyms = await fetchNearbyGymsFromFoursquare(lat, lng, 10000);
+      }
+
       setGyms(liveGyms);
     } catch (error) {
       console.error('[useGymList] Error loading gyms:', error);
@@ -97,7 +106,14 @@ export function useGymList() {
     const init = async () => {
       try {
         const { lat, lng, name } = await resolveCoordinates();
-        const liveGyms = await fetchNearbyGymsFromFoursquare(lat, lng, 10000);
+        let liveGyms = await fetchNearbyGymsFromGooglePlaces(lat, lng, 8000).catch((err) => {
+          console.warn('[useGymList] Google Places failed, falling back to Foursquare:', err);
+          return [];
+        });
+
+        if (!liveGyms || liveGyms.length === 0) {
+          liveGyms = await fetchNearbyGymsFromFoursquare(lat, lng, 10000);
+        }
 
         if (!ignore) {
           setLocationName(name);

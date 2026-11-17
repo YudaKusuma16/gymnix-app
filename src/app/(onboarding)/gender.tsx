@@ -38,22 +38,17 @@ export default function GenderSelectionScreen() {
             <TouchableOpacity
               activeOpacity={0.85}
               onPress={() => setSelectedGender('male')}
-              className={`flex-row items-center justify-between p-5 rounded-2xl border ${
+              className={`flex-row items-center justify-between p-5 rounded-3xl border ${
                 selectedGender === 'male'
                   ? 'border-[#BE3144] bg-[#BE3144]/10'
                   : 'border-[#1F1F1F] bg-[#0A0A0A]'
               }`}>
               <View className="flex-row items-center gap-4">
-                <View
-                  className={`w-12 h-12 rounded-xl items-center justify-center ${
-                    selectedGender === 'male' ? 'bg-[#BE3144]/20' : 'bg-[#141414]'
-                  }`}>
-                  <Ionicons
-                    name="male"
-                    size={24}
-                    color={selectedGender === 'male' ? '#BE3144' : '#FFFFFF'}
-                  />
-                </View>
+                <Ionicons
+                  name="male"
+                  size={26}
+                  color={selectedGender === 'male' ? '#BE3144' : '#FFFFFF'}
+                />
                 <Text className="text-white text-lg font-bold">Male</Text>
               </View>
 
@@ -73,22 +68,17 @@ export default function GenderSelectionScreen() {
             <TouchableOpacity
               activeOpacity={0.85}
               onPress={() => setSelectedGender('female')}
-              className={`flex-row items-center justify-between p-5 rounded-2xl border ${
+              className={`flex-row items-center justify-between p-5 rounded-3xl border ${
                 selectedGender === 'female'
                   ? 'border-[#BE3144] bg-[#BE3144]/10'
                   : 'border-[#1F1F1F] bg-[#0A0A0A]'
               }`}>
               <View className="flex-row items-center gap-4">
-                <View
-                  className={`w-12 h-12 rounded-xl items-center justify-center ${
-                    selectedGender === 'female' ? 'bg-[#BE3144]/20' : 'bg-[#141414]'
-                  }`}>
-                  <Ionicons
-                    name="female"
-                    size={24}
-                    color={selectedGender === 'female' ? '#BE3144' : '#FFFFFF'}
-                  />
-                </View>
+                <Ionicons
+                  name="female"
+                  size={26}
+                  color={selectedGender === 'female' ? '#BE3144' : '#FFFFFF'}
+                />
                 <Text className="text-white text-lg font-bold">Female</Text>
               </View>
 

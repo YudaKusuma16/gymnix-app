@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import * as Haptics from '@/utils/haptics';
+import { workoutService } from '../services/workoutService';
 
 export interface CalendarDayItem {
   day: string;
@@ -8,19 +9,41 @@ export interface CalendarDayItem {
   hasWorkout: boolean;
 }
 
-export const DEFAULT_CALENDAR_DAYS: CalendarDayItem[] = [
-  { day: 'MON', date: '09', hasWorkout: true },
-  { day: 'TUE', date: '10', hasWorkout: true },
-  { day: 'WED', date: '11', hasWorkout: false },
-  { day: 'THU', date: '12', hasWorkout: true },
-  { day: 'FRI', date: '13', hasWorkout: true },
-  { day: 'SAT', date: '14', hasWorkout: false },
-  { day: 'SUN', date: '15', hasWorkout: false },
-];
-
 export function useWorkoutHub() {
   const router = useRouter();
-  const [selectedCalendarDay, setSelectedCalendarDay] = useState(3); // Thursday active by default
+  const [calendarDays, setCalendarDays] = useState<CalendarDayItem[]>([]);
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      // Calculate dynamic days of current week (Mon -> Sun)
+      const now = new Date();
+      const currentDayOfWeek = (now.getDay() + 6) % 7; // 0 = Mon, 6 = Sun
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - currentDayOfWeek);
+
+      const daysOfWeek = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+      const history = await workoutService.getWorkoutHistory(50);
+      const workoutDates = new Set(
+        history.map((h: any) => new Date(h.started_at).toISOString().split('T')[0])
+      );
+
+      const days: CalendarDayItem[] = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        const dateStr = d.toISOString().split('T')[0];
+        days.push({
+          day: daysOfWeek[i],
+          date: String(d.getDate()).padStart(2, '0'),
+          hasWorkout: workoutDates.has(dateStr),
+        });
+      }
+
+      setCalendarDays(days);
+      setSelectedCalendarDay(currentDayOfWeek);
+    })();
+  }, []);
 
   const selectDay = (index: number) => {
     Haptics.selectionAsync();
@@ -38,7 +61,7 @@ export function useWorkoutHub() {
   };
 
   return {
-    calendarDays: DEFAULT_CALENDAR_DAYS,
+    calendarDays,
     selectedCalendarDay,
     selectDay,
     startNewWorkout,

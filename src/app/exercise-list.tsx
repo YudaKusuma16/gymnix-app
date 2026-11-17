@@ -49,18 +49,28 @@ export default function ExerciseListScreen() {
 
   const handleExercisePress = (ex: ExerciseItem) => {
     Haptics.selectionAsync();
+    const primaryMuscle =
+      ex.primary_muscles && ex.primary_muscles.length > 0
+        ? ex.primary_muscles[0]
+        : ex.target || 'General';
+
     router.push({
       pathname: '/exercise-detail',
       params: {
+        id: ex.id,
         name: capitalizeWords(ex.name),
-        muscle: capitalizeWords(ex.target || 'General'),
-        equipment: capitalizeWords(ex.equipment || 'Standard'),
+        muscle: capitalizeWords(primaryMuscle),
+        equipment: capitalizeWords(ex.equipment || 'Body Only'),
         bodyPart: capitalizeWords(ex.body_part || ''),
         description: ex.description || '',
         instructions: JSON.stringify(ex.instructions || []),
+        primaryMuscles: JSON.stringify(ex.primary_muscles || []),
         secondaryMuscles: JSON.stringify(ex.secondary_muscles || []),
-        difficulty: ex.difficulty || 'Intermediate',
-        category: ex.category || 'Strength',
+        difficulty: ex.difficulty || capitalizeWords(ex.level || 'Beginner'),
+        level: capitalizeWords(ex.level || 'Beginner'),
+        category: capitalizeWords(ex.category || 'Strength'),
+        force: capitalizeWords(ex.force || ''),
+        images: JSON.stringify(ex.images || []),
         gifUrl: ex.gif_url || '',
         mode: isWorkoutMode ? 'workout' : 'browse',
       },
@@ -69,7 +79,19 @@ export default function ExerciseListScreen() {
 
   const handleStartWorkout = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.push('/workout-active');
+    const selectedExercises = filteredExercises.filter((ex) => selectedIds.includes(ex.id));
+    const title =
+      selectedExercises.length === 1
+        ? capitalizeWords(selectedExercises[0].name)
+        : 'Custom Workout';
+    router.push({
+      pathname: '/workout-active',
+      params: {
+        title,
+        exercises: JSON.stringify(selectedExercises.map((e) => capitalizeWords(e.name))),
+        exerciseIds: JSON.stringify(selectedIds),
+      },
+    });
   };
 
   return (
@@ -86,7 +108,7 @@ export default function ExerciseListScreen() {
 
         {/* Search Field */}
         <View
-          className="flex-1 flex-row items-center bg-[#121212] border border-[#27272A] rounded-xl px-3 py-2 gap-2"
+          className="flex-1 flex-row items-center bg-[#121212] border border-[#27272A] rounded-full px-3.5 py-2 gap-2"
           style={styles.pillBorder}>
           <Ionicons name="search-outline" size={17} color="#71717A" />
           <TextInput
@@ -142,7 +164,7 @@ export default function ExerciseListScreen() {
       )}
 
       {/* 2. Interactive Filter Chips Bar */}
-      <View className="flex-row items-center gap-2 px-4 py-2.5 border-b border-[#141416]">
+      <View className="flex-row items-center gap-2 px-4 py-2.5 z-30">
         {/* Equipment Filter Button */}
         <TouchableOpacity
           onPress={() => {
@@ -163,7 +185,7 @@ export default function ExerciseListScreen() {
             {equipmentFilter === 'All' ? 'Equipment' : capitalizeWords(equipmentFilter)}
           </Text>
           <Ionicons
-            name="chevron-down"
+            name={activeFilterPicker === 'equipment' ? 'chevron-up' : 'chevron-down'}
             size={12}
             color={equipmentFilter !== 'All' ? '#BE3144' : '#71717A'}
           />
@@ -189,7 +211,7 @@ export default function ExerciseListScreen() {
             {muscleFilter === 'All' ? 'Muscle' : capitalizeWords(muscleFilter)}
           </Text>
           <Ionicons
-            name="chevron-down"
+            name={activeFilterPicker === 'muscle' ? 'chevron-up' : 'chevron-down'}
             size={12}
             color={muscleFilter !== 'All' ? '#BE3144' : '#71717A'}
           />
@@ -209,19 +231,35 @@ export default function ExerciseListScreen() {
 
         {/* Reset Filter Button */}
         {(equipmentFilter !== 'All' || muscleFilter !== 'All' || searchQuery.length > 0) && (
-          <TouchableOpacity onPress={resetFilters} className="p-1">
-            <Text className="text-[#BE3144] text-xs font-bold">Reset</Text>
+          <TouchableOpacity
+            onPress={resetFilters}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            className="w-7 h-7 rounded-full items-center justify-center bg-[#BE3144]/15 border border-[#BE3144]/35">
+            <Ionicons name="reload" size={13} color="#BE3144" />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Dropdown Options Drawer */}
+      {/* Backdrop overlay to dismiss dropdown menu when tapping outside */}
       {activeFilterPicker && (
-        <View className="bg-[#0D0D0E] border-b border-[#27272A] px-4 py-3">
-          <Text className="text-[#71717A] text-[10px] font-extrabold uppercase tracking-wider mb-2">
-            Select {activeFilterPicker === 'equipment' ? 'Equipment' : 'Target Muscle'}
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setActiveFilterPicker(null)}
+          className="absolute inset-0 z-40 bg-black/40"
+        />
+      )}
+
+      {/* Floating Dropdown List Menu */}
+      {activeFilterPicker && (
+        <View
+          className={`absolute top-[108px] z-50 bg-[#141416] border border-[#27272A] rounded-2xl shadow-2xl overflow-hidden p-1 ${
+            activeFilterPicker === 'equipment' ? 'left-4 w-48' : 'left-28 w-52'
+          }`}
+          style={styles.cardBorder}>
+          <ScrollView
+            showsVerticalScrollIndicator={true}
+            style={{ maxHeight: 260 }}>
             {(activeFilterPicker === 'equipment' ? equipmentOptions : muscleOptions).map(
               (option) => {
                 const isSelected =
@@ -240,17 +278,19 @@ export default function ExerciseListScreen() {
                       }
                       setActiveFilterPicker(null);
                     }}
-                    className={`px-3 py-1.5 rounded-lg border mr-2 ${
-                      isSelected
-                        ? 'bg-[#BE3144] border-[#BE3144]'
-                        : 'bg-[#18181A] border-[#2A2A2E]'
+                    activeOpacity={0.7}
+                    className={`flex-row items-center justify-between px-3 py-2.5 rounded-xl mb-0.5 ${
+                      isSelected ? 'bg-[#BE3144]/15' : 'active:bg-[#202026]'
                     }`}>
                     <Text
-                      className={`text-xs font-semibold ${
-                        isSelected ? 'text-white' : 'text-[#A1A1AA]'
+                      className={`text-xs ${
+                        isSelected ? 'text-[#BE3144] font-bold' : 'text-[#E4E4E7] font-medium'
                       }`}>
                       {capitalizeWords(option)}
                     </Text>
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={15} color="#BE3144" />
+                    )}
                   </TouchableOpacity>
                 );
               }
@@ -283,8 +323,8 @@ export default function ExerciseListScreen() {
               </Text>
             </View>
           ) : (
-            <View className="gap-2.5">
-              <Text className="text-[#52525B] text-[11px] font-bold uppercase tracking-wider mb-1 pl-1">
+            <View>
+              <Text className="text-[#52525B] text-[11px] font-bold uppercase tracking-wider mb-2 pl-1">
                 {filteredExercises.length} Exercises Available
               </Text>
 
@@ -325,6 +365,9 @@ export default function ExerciseListScreen() {
 }
 
 const styles = StyleSheet.create({
+  cardBorder: {
+    borderCurve: 'continuous',
+  },
   pillBorder: {
     borderCurve: 'continuous',
   },

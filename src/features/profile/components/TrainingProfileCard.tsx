@@ -87,16 +87,21 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   listContainer: {
-    // Unboxed: no background, no border
+    backgroundColor: '#141414',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#222226',
+    borderCurve: 'continuous',
+    paddingHorizontal: 16,
+    paddingVertical: 2,
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 13,
-    paddingHorizontal: 2,
     borderBottomWidth: 1,
-    borderBottomColor: '#18181A',
+    borderBottomColor: '#202026',
   },
   lastItemRow: {
     borderBottomWidth: 0,

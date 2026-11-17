@@ -81,22 +81,17 @@ export default function FitnessGoalScreen() {
                   activeOpacity={0.85}
                   onPress={() => setSelectedGoal(goal.id)}
                   style={{ paddingVertical: 20, paddingHorizontal: 18 }}
-                  className={`flex-row items-center justify-between py-5 px-4.5 rounded-2xl border ${
+                  className={`flex-row items-center justify-between py-5 px-4.5 rounded-3xl border ${
                     isSelected
                       ? 'border-[#BE3144] bg-[#BE3144]/10'
                       : 'border-[#1F1F1F] bg-[#0A0A0A]'
                   }`}>
                   <View className="flex-row items-center gap-4 flex-1 pr-3">
-                    <View
-                      className={`w-12 h-12 rounded-xl items-center justify-center ${
-                        isSelected ? 'bg-[#BE3144]/20' : 'bg-[#141414]'
-                      }`}>
-                      <Ionicons
-                        name={goal.icon}
-                        size={24}
-                        color={isSelected ? '#BE3144' : '#FFFFFF'}
-                      />
-                    </View>
+                    <Ionicons
+                      name={goal.icon}
+                      size={26}
+                      color={isSelected ? '#BE3144' : '#FFFFFF'}
+                    />
                     <View className="flex-1">
                       <Text className="text-white text-base font-bold leading-snug">
                         {goal.title}

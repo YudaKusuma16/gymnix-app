@@ -93,7 +93,7 @@ export default function MeasurementsScreen() {
               <View className="mt-8 gap-5">
                 {/* 1. Height Card */}
                 <View
-                  className={`bg-[#0A0A0A] rounded-2xl p-5 border transition-all ${
+                  className={`bg-[#0A0A0A] rounded-3xl p-5 border transition-all ${
                     isHeightFocused
                       ? 'border-[#BE3144] bg-[#BE3144]/5'
                       : 'border-[#1F1F1F]'
@@ -109,7 +109,7 @@ export default function MeasurementsScreen() {
                       <TouchableOpacity
                         activeOpacity={0.7}
                         onPress={() => handleToggleHeightUnit('CM')}
-                        className={`px-3 py-1 rounded-md ${
+                        className={`px-3 py-1 rounded-lg ${
                           heightUnit === 'CM' ? 'bg-[#BE3144]' : 'bg-transparent'
                         }`}>
                         <Text
@@ -123,7 +123,7 @@ export default function MeasurementsScreen() {
                       <TouchableOpacity
                         activeOpacity={0.7}
                         onPress={() => handleToggleHeightUnit('FT')}
-                        className={`px-3 py-1 rounded-md ${
+                        className={`px-3 py-1 rounded-lg ${
                           heightUnit === 'FT' ? 'bg-[#BE3144]' : 'bg-transparent'
                         }`}>
                         <Text
@@ -157,7 +157,7 @@ export default function MeasurementsScreen() {
 
                 {/* 2. Weight Card */}
                 <View
-                  className={`bg-[#0A0A0A] rounded-2xl p-5 border transition-all ${
+                  className={`bg-[#0A0A0A] rounded-3xl p-5 border transition-all ${
                     isWeightFocused
                       ? 'border-[#BE3144] bg-[#BE3144]/5'
                       : 'border-[#1F1F1F]'
@@ -173,7 +173,7 @@ export default function MeasurementsScreen() {
                       <TouchableOpacity
                         activeOpacity={0.7}
                         onPress={() => handleToggleWeightUnit('KG')}
-                        className={`px-3 py-1 rounded-md ${
+                        className={`px-3 py-1 rounded-lg ${
                           weightUnit === 'KG' ? 'bg-[#BE3144]' : 'bg-transparent'
                         }`}>
                         <Text
@@ -187,7 +187,7 @@ export default function MeasurementsScreen() {
                       <TouchableOpacity
                         activeOpacity={0.7}
                         onPress={() => handleToggleWeightUnit('LBS')}
-                        className={`px-3 py-1 rounded-md ${
+                        className={`px-3 py-1 rounded-lg ${
                           weightUnit === 'LBS' ? 'bg-[#BE3144]' : 'bg-transparent'
                         }`}>
                         <Text

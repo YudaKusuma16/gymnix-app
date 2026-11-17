@@ -1,14 +1,5 @@
-import { SemiGauge } from '@/components/ui/inverted-gauge';
-import { MonthlyFocusCard } from '@/components/ui/monthly-focus-card';
-import { MuscleVolumeCard } from '@/components/ui/muscle-volume-card';
-import { WeeklyAdherenceCard } from '@/components/ui/weekly-adherence-card';
-import * as Haptics from '@/utils/haptics';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,50 +7,105 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-
-interface WeeklyVolumeDay {
-  day: string;
-  value: string;
-  height: `${number}%`;
-  baseColor: string;
-}
-
-const WEEKLY_DAYS_TONNAGE: WeeklyVolumeDay[] = [
-  { day: 'M', value: '1.8k', height: '46%', baseColor: '#26292E' },
-  { day: 'T', value: '2.4k', height: '50%', baseColor: '#26292E' },
-  { day: 'W', value: 'Rest', height: '8%', baseColor: '#17181B' },
-  { day: 'T', value: '3.1k', height: '82%', baseColor: '#BE3144' }, // Active (Thursday)
-  { day: 'F', value: '1.4k', height: '36%', baseColor: '#1C1E22' },
-  { day: 'S', value: 'Est', height: '46%', baseColor: '#17181B' },
-  { day: 'S', value: 'Rest', height: '8%', baseColor: '#17181B' },
-];
-
-const WEEKLY_DAYS_SETS: WeeklyVolumeDay[] = [
-  { day: 'M', value: '16', height: '62%', baseColor: '#26292E' },
-  { day: 'T', value: '18', height: '70%', baseColor: '#26292E' },
-  { day: 'W', value: 'Rest', height: '8%', baseColor: '#17181B' },
-  { day: 'T', value: '22', height: '85%', baseColor: '#BE3144' }, // Active (Thursday)
-  { day: 'F', value: '12', height: '46%', baseColor: '#1C1E22' },
-  { day: 'S', value: '14', height: '54%', baseColor: '#17181B' },
-  { day: 'S', value: 'Rest', height: '8%', baseColor: '#17181B' },
-];
-
-const EXERCISE_CHIPS = [
-  { line1: 'Incline DB', line2: 'Press' },
-  { line1: 'Overhead', line2: 'Press' },
-  { line1: 'Cable', line2: 'Flys' },
-  { line1: '+2', line2: 'more' },
-];
+import { useRouter, useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from '@/utils/haptics';
+import { homeService, HomeDashboardData, VolumeDay } from '@/features/home/services/homeService';
+import { profileService } from '@/features/profile/services/profileService';
+import { supabase } from '@/lib/supabase';
 
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [activeDayIdx, setActiveDayIdx] = useState<number>(3); // Default to Thursday (index 3)
-  const [volumeMetric, setVolumeMetric] = useState<'tonnage' | 'sets'>('tonnage');
+  const [activeDayIdx, setActiveDayIdx] = useState<number>((new Date().getDay() + 6) % 7);
+  const [dashboard, setDashboard] = useState<HomeDashboardData>(() => ({
+    athleteName: profileService.getCachedAthleteName(),
+    avatarUrl: profileService.getCachedAvatarUrl(),
+    activeSession: null,
+    todayExercises: ['Barbell Squat', 'Bench Press', 'Barbell Row', 'Overhead Press', 'Deadlift'],
+    weeklyVolume: [
+      { day: 'Mon', value: '0', numeric: 0, heightPercent: 16 },
+      { day: 'Tue', value: '0', numeric: 0, heightPercent: 16 },
+      { day: 'Wed', value: '0', numeric: 0, heightPercent: 16 },
+      { day: 'Thu', value: '0', numeric: 0, heightPercent: 16 },
+      { day: 'Fri', value: '0', numeric: 0, heightPercent: 16 },
+      { day: 'Sat', value: '0', numeric: 0, heightPercent: 16 },
+      { day: 'Sun', value: '0', numeric: 0, heightPercent: 16 },
+    ],
+    totalWeeklyVolumeKg: 0,
+    totalWeeklySets: 0,
+    activeDaysCount: 0,
+  }));
 
-  const handleStartSession = () => {
+  // Immediate zero-latency local session retrieval to populate connected user's name on first frame
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const meta = session.user.user_metadata;
+        const rawName =
+          meta?.display_name ||
+          meta?.full_name ||
+          meta?.name ||
+          session.user.email?.split('@')[0];
+
+        if (rawName) {
+          const firstName = rawName.trim().split(' ')[0];
+          const avatar = meta?.avatar_url || meta?.picture || null;
+          profileService.setCachedProfile(firstName, avatar);
+          setDashboard((prev) => ({
+            ...prev,
+            athleteName: prev.athleteName || firstName,
+            avatarUrl: prev.avatarUrl || avatar,
+          }));
+        }
+      }
+    });
+  }, []);
+
+  const loadData = useCallback(async () => {
+    try {
+      const data = await homeService.getDashboardData();
+      setDashboard(data);
+    } catch (e) {
+      console.warn('[HomeScreen] Could not load dashboard data:', e);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  const handleStartWorkout = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/(tabs)/workout');
+    router.push({
+      pathname: '/workout-active',
+      params: {
+        title: 'Full Body Strength',
+        exercises: JSON.stringify(dashboard.todayExercises),
+      },
+    });
+  };
+
+  const handleResumeWorkout = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push({
+      pathname: '/workout-active',
+      params: {
+        resume: 'true',
+        sessionId: dashboard.activeSession?.id || '',
+        title: dashboard.activeSession?.title || 'Full Body Strength',
+        exercises: JSON.stringify(dashboard.todayExercises),
+      },
+    });
+  };
+
+  const handleProfilePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/(tabs)/profile');
   };
 
   const handleSelectDay = (index: number) => {
@@ -67,235 +113,203 @@ export default function HomeScreen() {
     setActiveDayIdx(index);
   };
 
-  const handleNotificationPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
-  const handleStreakPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
-  const handlePrPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* 1. Header */}
-      <View style={styles.header}>
-        <View style={styles.brandRow}>
-          <Text style={styles.brandTitle}>GYMNIX</Text>
-        </View>
-
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={handleStreakPress}
-            style={styles.streakBadge}
-            accessibilityRole="button"
-            accessibilityLabel="4 day streak">
-            <Ionicons name="flame" size={14} color="#BE3144" />
-            <Text style={styles.streakText}>4d Streak</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={handleNotificationPress}
-            style={styles.iconButton}
-            accessibilityRole="button"
-            accessibilityLabel="Notifications">
-            <Ionicons name="notifications-outline" size={17} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* 2. Scrollable Body */}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
           styles.scrollContent,
           { paddingBottom: insets.bottom + 84 },
         ]}>
-
-        {/* TODAY'S SPLIT HERO CARD (Matches User Image) */}
-        <View style={styles.heroCard}>
-          {/* Smooth, Seamless Corner Gradient into Tone Color (#BE3144) - Versi Paling Awal */}
-          <LinearGradient
-            colors={[
-              'rgba(190, 49, 68, 0.42)',
-              'rgba(190, 49, 68, 0.16)',
-              'rgba(12, 12, 14, 0.02)',
-              'transparent',
-            ]}
-            locations={[0, 0.32, 0.65, 1]}
-            start={{ x: 1, y: 0 }}
-            end={{ x: 0.1, y: 0.75 }}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
-
-          {/* Card Header: Section Title & Tone-Matched READY Badge */}
-          <View style={styles.heroTopRow}>
-            <Text style={styles.sectionHeaderLabel}>{"TODAY'S SPLIT"}</Text>
-            <View style={styles.readyBadge}>
-              <Text style={styles.readyBadgeText}>READY</Text>
-            </View>
+        {/* 1. Header: Greeting & Profile Avatar */}
+        <View style={styles.headerRow}>
+          <View style={styles.greetingCol}>
+            <Text style={styles.greetingTitle}>
+              {dashboard.athleteName ? `Hello, ${dashboard.athleteName}` : 'Welcome Back'}
+            </Text>
+            <Text style={styles.greetingSubtitle}>Ready for your workout?</Text>
           </View>
 
-          {/* Title & Workout Subtitle */}
-          <Text style={styles.heroTitle}>Push Day A</Text>
-          <Text style={styles.heroSubtitle}>
-            Chest, Shoulders & Triceps • 5 Exercises •{'\n'}~50m
-          </Text>
-
-          {/* Stacked 2-Line Exercise Chips */}
-          <View style={styles.exerciseChipsRow}>
-            {EXERCISE_CHIPS.map((chip, idx) => (
-              <View key={idx} style={styles.exerciseChip}>
-                <Text style={styles.chipText}>{chip.line1}</Text>
-                <Text style={styles.chipText}>{chip.line2}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Start Session CTA Button with Trailing Play Arrow */}
           <TouchableOpacity
-            activeOpacity={0.88}
-            onPress={handleStartSession}
-            style={styles.ctaButton}
+            activeOpacity={0.8}
+            onPress={handleProfilePress}
+            style={styles.avatarButton}
             accessibilityRole="button"
-            accessibilityLabel="Start Workout Session">
-            <Text style={styles.ctaButtonText}>Start Session</Text>
-            <Ionicons name="play" size={13} color="#FFFFFF" style={styles.ctaPlayIcon} />
+            accessibilityLabel="View profile">
+            {dashboard.avatarUrl ? (
+              <Image
+                source={{ uri: dashboard.avatarUrl }}
+                style={styles.avatarImage}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={[styles.avatarImage, styles.avatarFallback]}>
+                <Text style={styles.avatarInitials}>
+                  {(dashboard.athleteName || 'GX').slice(0, 2).toUpperCase()}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
-        {/* METRICS ROW: Calorie Gauge + Weekly Habit Adherence */}
-        <View style={styles.metricsRow}>
-          {/* Daily Target */}
-          <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>DAILY TARGET</Text>
-            <View style={styles.metricGaugeSlot}>
-              <SemiGauge
-                value="2,450"
-                unit="kcal"
-                progress={0.74}
-                size={128}
-                strokeWidth={12}
-                color="#BE3144"
-              />
+        {/* Banner Sesi Aktif (Resume Workout - rendered dynamically if active session exists) */}
+        {dashboard.activeSession && (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={handleResumeWorkout}
+            style={styles.activeWorkoutBanner}
+            accessibilityRole="button"
+            accessibilityLabel="Resume active workout">
+            <View style={styles.activeBannerLeft}>
+              <View style={styles.pulsingDotWrapper}>
+                <View style={styles.pulsingDot} />
+              </View>
+
+              <View style={styles.activeBannerTextCol}>
+                <Text style={styles.activeBannerTitle}>Workout in Progress</Text>
+                <Text style={styles.activeBannerSplit}>
+                  {dashboard.activeSession.title || 'Full Body Workout'}
+                </Text>
+                <Text style={styles.activeBannerMeta}>Tap to continue your session</Text>
+              </View>
             </View>
-            <Text style={styles.metricFootnote}>BMR/TDEE Calibrated</Text>
+
+            <View style={styles.resumePill}>
+              <Text style={styles.resumePillText}>Resume</Text>
+              <Ionicons name="play" size={11} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {/* 2. Section: Today's Workout (Dynamic from Database) */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>{"Today's Workout"}</Text>
           </View>
 
-          {/* Weekly Habit Adherence (Target vs Completed Sessions) */}
-          <WeeklyAdherenceCard completed={3} target={4} />
+          <View style={styles.workoutCard}>
+            {/* Subtle atmospheric corner accent glow */}
+            <LinearGradient
+              colors={['rgba(190, 49, 68, 0.16)', 'rgba(190, 49, 68, 0.03)', 'transparent']}
+              locations={[0, 0.45, 1]}
+              start={{ x: 1, y: 0 }}
+              end={{ x: 0.1, y: 0.85 }}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
+
+            {/* Header: Title & Duration */}
+            <View style={styles.workoutHeaderRow}>
+              <Text style={styles.workoutTitle}>Full Body Strength</Text>
+              <View style={styles.workoutDurationInline}>
+                <Ionicons name="time-outline" size={13} color="#8E8E93" />
+                <Text style={styles.workoutDurationText}>45 min</Text>
+              </View>
+            </View>
+
+            {/* Exercise Movements Horizontal Wrap Cards */}
+            <View style={styles.exerciseCardsRowWrap}>
+              {dashboard.todayExercises.map((name, idx) => (
+                <View key={idx} style={styles.exerciseCard}>
+                  <Text style={styles.exerciseNameText}>{name}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Start Workout Button with Gradient & Play Icon */}
+            <TouchableOpacity
+              activeOpacity={0.88}
+              onPress={handleStartWorkout}
+              style={styles.startWorkoutButton}
+              accessibilityRole="button"
+              accessibilityLabel="Start workout">
+              <LinearGradient
+                colors={['#E63950', '#BE3144']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.startWorkoutGradient}>
+                <Text style={styles.startWorkoutText}>Start Workout</Text>
+                <Ionicons name="play" size={12} color="#FFFFFF" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* WEEKLY VOLUME CARD (With Segmented Toggle: Tonnage vs Working Sets) */}
-        <View style={styles.volumeCard}>
-          <View style={styles.volumeHeaderRow}>
-            <View>
-              <Text style={styles.cardTitle}>
-                {volumeMetric === 'tonnage' ? 'Weekly Volume' : 'Weekly Working Sets'}
-              </Text>
-              <Text style={styles.cardSubtitle}>
-                {volumeMetric === 'tonnage'
-                  ? 'Total tonnage across sets'
-                  : 'Total hard sets across splits'}
-              </Text>
-            </View>
+        {/* 3. Section: Weekly Volume (Dynamic from Database) */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Weekly Volume</Text>
 
-            <View style={styles.volumeHeaderRight}>
-              {/* Segmented Toggle */}
-              <View style={styles.segmentedToggle}>
-                <TouchableOpacity
-                  activeOpacity={0.75}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setVolumeMetric('tonnage');
-                  }}
-                  style={[
-                    styles.segmentOption,
-                    volumeMetric === 'tonnage' && styles.segmentOptionActive,
-                  ]}>
-                  <Text
-                    style={[
-                      styles.segmentOptionText,
-                      volumeMetric === 'tonnage' && styles.segmentOptionTextActive,
-                    ]}>
-                    KG
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  activeOpacity={0.75}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setVolumeMetric('sets');
-                  }}
-                  style={[
-                    styles.segmentOption,
-                    volumeMetric === 'sets' && styles.segmentOptionActive,
-                  ]}>
-                  <Text
-                    style={[
-                      styles.segmentOptionText,
-                      volumeMetric === 'sets' && styles.segmentOptionTextActive,
-                    ]}>
-                    SETS
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.volumeTotalRow}>
-                <Text style={styles.volumeTotalNumber}>
-                  {volumeMetric === 'tonnage' ? '14,820' : '82'}
-                </Text>
-                <Text style={styles.volumeTotalUnit}>
-                  {volumeMetric === 'tonnage' ? 'kg' : 'sets'}
-                </Text>
-              </View>
+            {/* Weekly Goal Pill (Target Frekuensi) */}
+            <View style={styles.goalPill}>
+              <Ionicons name="flame" size={12} color="#BE3144" />
+              <Text style={styles.goalPillText}>
+                <Text style={styles.goalPillNumber}>{dashboard.activeDaysCount} / 4</Text> Sessions Done
+              </Text>
             </View>
           </View>
 
-          {/* Bar Chart Area */}
-          <View style={styles.chartArea}>
-            <View style={styles.barsContainer}>
-              {(volumeMetric === 'tonnage' ? WEEKLY_DAYS_TONNAGE : WEEKLY_DAYS_SETS).map(
-                (item, idx) => {
+          <View style={styles.chartCard}>
+            {/* Stats Header */}
+            <View style={styles.statsHeader}>
+              <View style={styles.statLabelRow}>
+                <Ionicons name="barbell-outline" size={15} color="#BE3144" />
+                <Text style={styles.statLabel}>Volume</Text>
+              </View>
+
+              <View style={styles.statValuesRow}>
+                <View style={styles.statCol}>
+                  <Text style={styles.statNumber}>
+                    {dashboard.totalWeeklyVolumeKg.toLocaleString()}
+                  </Text>
+                  <Text style={styles.statSubText}>Total kg</Text>
+                </View>
+
+                <View style={styles.statDivider} />
+
+                <View style={styles.statCol}>
+                  <Text style={styles.statNumber}>{dashboard.totalWeeklySets}</Text>
+                  <Text style={styles.statSubText}>Sets</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Bar Chart Area with Proportional Capsules */}
+            <View style={styles.chartArea}>
+              <View style={styles.barsContainer}>
+                {dashboard.weeklyVolume.map((item: VolumeDay, idx: number) => {
                   const isActive = activeDayIdx === idx;
                   return (
                     <TouchableOpacity
-                      key={idx}
+                      key={item.day}
                       activeOpacity={0.8}
                       onPress={() => handleSelectDay(idx)}
                       style={styles.barColumn}>
-                      {/* Active Value + Centered White Dot Indicator */}
-                      <View style={styles.topIndicatorSlot}>
+                      {/* Floating Tooltip Slot */}
+                      <View style={styles.tooltipSlot}>
                         {isActive && (
-                          <>
-                            <Text style={styles.activeDayValue}>{item.value}</Text>
-                            <View style={styles.activeDayDot} />
-                          </>
+                          <View style={styles.tooltipPill}>
+                            <Text style={styles.tooltipText}>
+                              {item.numeric.toLocaleString()}
+                            </Text>
+                          </View>
                         )}
                       </View>
 
-                      {/* Wide Bar with Tight Inter-Day Spacing */}
+                      {/* Bar Track & Rounded Capsule */}
                       <View style={styles.barTrack}>
                         <View
                           style={[
-                            styles.barFill,
-                            {
-                              height: item.height,
-                              backgroundColor: isActive ? '#C92A3E' : item.baseColor,
-                            },
-                            isActive && styles.activeBarGlow,
+                            styles.barCapsule,
+                            { height: `${item.heightPercent}%` },
+                            isActive
+                              ? styles.barCapsuleActive
+                              : styles.barCapsuleInactive,
                           ]}
                         />
                       </View>
 
-                      {/* Day Letter */}
+                      {/* Day Label */}
                       <Text
                         style={[
                           styles.barDayLabel,
@@ -305,45 +319,11 @@ export default function HomeScreen() {
                       </Text>
                     </TouchableOpacity>
                   );
-                }
-              )}
+                })}
+              </View>
             </View>
           </View>
         </View>
-
-        {/* MUSCLE GROUP VOLUME BREAKDOWN */}
-        <MuscleVolumeCard />
-
-        {/* ACTIVE CYCLE / MONTHLY FOCUS */}
-        <MonthlyFocusCard />
-
-        {/* QUICK RECENT PR (Tone-Matched, No Green) */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={handlePrPress}
-          style={styles.prCard}
-          accessibilityRole="button"
-          accessibilityLabel="Recent PR: Barbell Bench Press 80kg">
-          <View style={styles.prLeftGroup}>
-            <View style={styles.trophyIconContainer}>
-              <Ionicons name="trophy" size={17} color="#BE3144" />
-            </View>
-            <View style={styles.prTextGroup}>
-              <View style={styles.prBadgeRow}>
-                <Text style={styles.prBadgeText}>NEW PR</Text>
-                <Text style={styles.prTimeText}>• Yesterday</Text>
-              </View>
-              <Text style={styles.prTitleText} numberOfLines={1}>
-                Barbell Bench Press 80 kg
-              </Text>
-            </View>
-          </View>
-
-          {/* Tone-matched PR badge replacing green */}
-          <View style={styles.prDeltaBadge}>
-            <Text style={styles.prDeltaText}>+2.5 kg</Text>
-          </View>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -354,416 +334,338 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#18181C',
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  brandTitle: {
-    color: '#BE3144',
-    fontSize: 22,
-    fontWeight: '900',
-    fontStyle: 'italic',
-    letterSpacing: 1.2,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  streakBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#121215',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderCurve: 'continuous',
-    borderWidth: 1,
-    borderColor: '#24242A',
-    gap: 5,
-  },
-  streakText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-    fontVariant: ['tabular-nums'],
-    letterSpacing: 0.2,
-  },
-  iconButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 999,
-    borderCurve: 'continuous',
-    backgroundColor: '#121215',
-    borderWidth: 1,
-    borderColor: '#24242A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingHorizontal: 20,
+    paddingTop: 8,
   },
-
-  // --- 1. HERO CARD (Today's Split as in Image 1) ---
-  heroCard: {
-    backgroundColor: '#0A0A0C',
-    borderRadius: 16,
-    borderCurve: 'continuous',
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#1D1D22',
-    marginBottom: 14,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  heroTopRow: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 20,
   },
-  sectionHeaderLabel: {
-    color: '#71717A',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+  greetingCol: {
+    flex: 1,
   },
-  readyBadge: {
-    backgroundColor: 'rgba(190, 49, 68, 0.2)',
-    paddingHorizontal: 9,
-    paddingVertical: 3.5,
-    borderRadius: 6,
-    borderCurve: 'continuous',
-  },
-  readyBadgeText: {
-    color: '#E63950',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-  },
-  heroTitle: {
+  greetingTitle: {
     color: '#FFFFFF',
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
     letterSpacing: -0.4,
-    marginTop: 2,
   },
-  heroSubtitle: {
-    color: '#71717A',
+  greetingSubtitle: {
+    color: '#8E8E93',
     fontSize: 13,
     fontWeight: '500',
-    lineHeight: 18,
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  exerciseChipsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 18,
-  },
-  exerciseChip: {
-    flex: 1,
-    backgroundColor: '#141416',
-    borderRadius: 8,
-    borderCurve: 'continuous',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    justifyContent: 'center',
-  },
-  chipText: {
-    color: '#A1A1AA',
-    fontSize: 11,
-    fontWeight: '600',
-    lineHeight: 15,
-  },
-  ctaButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#C92A3E',
-    paddingVertical: 13,
-    borderRadius: 12,
-    borderCurve: 'continuous',
-    gap: 7,
-  },
-  ctaButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  ctaPlayIcon: {
-    marginLeft: 2,
-  },
-
-  // --- 2. METRICS ROW ---
-  metricsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 14,
-  },
-  metricCard: {
-    flex: 1,
-    backgroundColor: '#0C0C0E',
-    borderRadius: 16,
-    borderCurve: 'continuous',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#1D1D22',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  metricLabel: {
-    color: '#71717A',
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  metricGaugeSlot: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 4,
-  },
-  metricFootnote: {
-    color: '#71717A',
-    fontSize: 10,
-    fontWeight: '500',
-    textAlign: 'center',
     marginTop: 2,
   },
-  metricFootnoteHighlight: {
-    color: '#BE3144',
-    fontWeight: '700',
-    fontVariant: ['tabular-nums'],
+  avatarButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#262626',
+    overflow: 'hidden',
+    backgroundColor: '#161616',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-
-  // --- 3. WEEKLY VOLUME CARD (As in Image 2) ---
-  volumeCard: {
-    backgroundColor: '#0C0C0E',
-    borderRadius: 16,
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarFallback: {
+    backgroundColor: '#1E1E24',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitials: {
+    color: '#FFFFFF',
+    fontWeight: '900',
+    fontSize: 14,
+  },
+  activeWorkoutBanner: {
+    backgroundColor: 'rgba(190, 49, 68, 0.08)',
+    borderRadius: 18,
     borderCurve: 'continuous',
-    padding: 16,
     borderWidth: 1,
-    borderColor: '#1D1D22',
-    marginBottom: 14,
-  },
-  volumeHeaderRow: {
+    borderColor: 'rgba(190, 49, 68, 0.28)',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 20,
   },
-  volumeHeaderRight: {
-    alignItems: 'flex-end',
-    gap: 6,
-  },
-  segmentedToggle: {
+  activeBannerLeft: {
     flexDirection: 'row',
-    backgroundColor: '#16161A',
-    borderRadius: 8,
-    padding: 2,
-    borderWidth: 1,
-    borderColor: '#24242A',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
   },
-  segmentOption: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+  pulsingDotWrapper: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(190, 49, 68, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  segmentOptionActive: {
+  pulsingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: '#BE3144',
   },
-  segmentOptionText: {
-    color: '#71717A',
-    fontSize: 9,
+  activeBannerTextCol: {
+    flex: 1,
+  },
+  activeBannerTitle: {
+    color: '#BE3144',
+    fontSize: 10.5,
     fontWeight: '800',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
-  segmentOptionTextActive: {
+  activeBannerSplit: {
     color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+    marginTop: 1,
   },
-  cardTitle: {
+  activeBannerMeta: {
+    color: '#71717A',
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  resumePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#BE3144',
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderCurve: 'continuous',
+  },
+  resumePillText: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+  sectionContainer: {
+    marginBottom: 20,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  sectionTitle: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: -0.2,
   },
-  cardSubtitle: {
-    color: '#71717A',
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 2,
+  goalPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4.5,
+    backgroundColor: 'rgba(190, 49, 68, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(190, 49, 68, 0.28)',
+    borderRadius: 999,
+    paddingHorizontal: 8.5,
+    paddingVertical: 3.5,
   },
-  volumeTotalRow: {
+  goalPillText: {
+    color: '#FFFFFF',
+    fontSize: 10.5,
+    fontWeight: '700',
+  },
+  goalPillNumber: {
+    color: '#BE3144',
+    fontWeight: '800',
+  },
+  workoutCard: {
+    backgroundColor: '#0F0F11',
+    borderRadius: 24,
+    borderCurve: 'continuous',
+    borderWidth: 1,
+    borderColor: '#1E1E24',
+    padding: 16,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  workoutHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  workoutTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  workoutDurationInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  workoutDurationText: {
+    color: '#8E8E93',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  exerciseCardsRowWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 7,
+    marginBottom: 16,
+  },
+  exerciseCard: {
+    backgroundColor: '#141414',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#24242A',
+  },
+  exerciseNameText: {
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '600',
+  },
+  startWorkoutButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  startWorkoutGradient: {
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  startWorkoutText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  chartCard: {
+    backgroundColor: '#000000',
+    borderRadius: 24,
+    borderCurve: 'continuous',
+    borderWidth: 1,
+    borderColor: '#1E1E24',
+    padding: 16,
+  },
+  statsHeader: {
+    marginBottom: 12,
+  },
+  statLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 6,
+  },
+  statLabel: {
+    color: '#8E8E93',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  statValuesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  statCol: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 3,
+    gap: 5,
   },
-  volumeTotalNumber: {
+  statNumber: {
     color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: -0.4,
-    fontVariant: ['tabular-nums'],
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: -0.5,
   },
-  volumeTotalUnit: {
-    color: '#8A8F9D',
-    fontSize: 13,
-    fontWeight: '500',
+  statSubText: {
+    color: '#8E8E93',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  statDivider: {
+    width: 1,
+    height: 18,
+    backgroundColor: '#262626',
   },
   chartArea: {
-    height: 136,
-    justifyContent: 'flex-end',
+    marginTop: 4,
   },
   barsContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    gap: 7, // Tight inter-day spacing
     height: 130,
+    paddingTop: 24,
   },
   barColumn: {
-    flex: 1, // Wide bars that span horizontally
+    flex: 1,
     alignItems: 'center',
     height: '100%',
     justifyContent: 'flex-end',
   },
-  topIndicatorSlot: {
+  tooltipSlot: {
     height: 22,
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    width: '100%',
-    position: 'relative',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
-  activeDayValue: {
-    color: '#E63950',
-    fontSize: 10,
-    fontWeight: '800',
-    fontVariant: ['tabular-nums'],
-    marginBottom: 2,
-  },
-  activeDayDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+  tooltipPill: {
     backgroundColor: '#FFFFFF',
-    marginBottom: -3.5, // Sits exactly on the top edge of the active bar
-    zIndex: 2,
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  tooltipText: {
+    color: '#000000',
+    fontSize: 9,
+    fontWeight: '900',
   },
   barTrack: {
-    width: '100%',
+    width: 22,
     height: 80,
+    borderRadius: 11,
+    backgroundColor: '#1E1E24',
     justifyContent: 'flex-end',
+    overflow: 'hidden',
   },
-  barFill: {
+  barCapsule: {
     width: '100%',
-    borderRadius: 4,
+    borderRadius: 11,
   },
-  activeBarGlow: {
-    ...Platform.select({
-      ios: {
-        shadowColor: '#BE3144',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.75,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
+  barCapsuleActive: {
+    backgroundColor: '#BE3144',
+  },
+  barCapsuleInactive: {
+    backgroundColor: '#2C2C34',
   },
   barDayLabel: {
-    color: '#60646E',
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 8,
+    color: '#71717A',
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 6,
   },
   barDayLabelActive: {
     color: '#FFFFFF',
-    fontWeight: '800',
-  },
-
-  // --- 4. RECENT PR CARD ---
-  prCard: {
-    backgroundColor: '#0C0C0E',
-    borderRadius: 16,
-    borderCurve: 'continuous',
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#1D1D22',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  prLeftGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-    paddingRight: 8,
-  },
-  trophyIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    borderCurve: 'continuous',
-    backgroundColor: 'rgba(190, 49, 68, 0.14)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  prTextGroup: {
-    flex: 1,
-  },
-  prBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  prBadgeText: {
-    color: '#BE3144',
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-  },
-  prTimeText: {
-    color: '#71717A',
-    fontSize: 10,
-    fontWeight: '500',
-  },
-  prTitleText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  prDeltaBadge: {
-    backgroundColor: 'rgba(190, 49, 68, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderCurve: 'continuous',
-    borderWidth: 1,
-    borderColor: 'rgba(190, 49, 68, 0.28)',
-  },
-  prDeltaText: {
-    color: '#E63950',
-    fontSize: 11,
-    fontWeight: '800',
-    fontVariant: ['tabular-nums'],
+    fontWeight: '900',
   },
 });
