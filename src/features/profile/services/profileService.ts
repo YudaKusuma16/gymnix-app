@@ -183,6 +183,38 @@ export const profileService = {
 
       const totalVolumeKg = squatKg + benchKg + deadliftKg;
 
+      const heightCm = Number(data.height_cm) || DEFAULT_PROFILE.vitals.heightCm;
+      const weightKg = Number(data.weight_kg) || DEFAULT_PROFILE.vitals.weightKg;
+
+      let bmi = DEFAULT_PROFILE.vitals.bmi;
+      let bmiStatus = DEFAULT_PROFILE.vitals.bmiStatus;
+      let calorieCap = DEFAULT_PROFILE.vitals.calorieCap;
+      let calorieMode = DEFAULT_PROFILE.vitals.calorieMode;
+
+      if (heightCm > 0 && weightKg > 0) {
+        bmi = Math.round((weightKg / Math.pow(heightCm / 100, 2)) * 10) / 10;
+        if (bmi < 18.5) bmiStatus = 'Underweight';
+        else if (bmi < 25) bmiStatus = 'Optimal';
+        else if (bmi < 30) bmiStatus = 'Overweight';
+        else bmiStatus = 'High';
+
+        const isFemale = String(data.gender || '').toLowerCase() === 'female';
+        const bmr = 10 * weightKg + 6.25 * heightCm - 5 * 25 + (isFemale ? -161 : 5);
+        const tdee = Math.round(bmr * 1.55);
+        const goalLower = String(data.fitness_goal || '').toLowerCase();
+
+        if (goalLower.includes('fat') || goalLower.includes('lose') || goalLower.includes('cut')) {
+          calorieCap = Math.max(1400, tdee - 400);
+          calorieMode = 'Deficit Target';
+        } else if (goalLower.includes('muscle') || goalLower.includes('hypertrophy') || goalLower.includes('strength')) {
+          calorieCap = tdee + 300;
+          calorieMode = 'Lean Surplus';
+        } else {
+          calorieCap = tdee;
+          calorieMode = 'BMR/TDEE Active';
+        }
+      }
+
       return {
         ...DEFAULT_PROFILE,
         id: data.id,
@@ -196,8 +228,12 @@ export const profileService = {
         },
         vitals: {
           ...DEFAULT_PROFILE.vitals,
-          heightCm: data.height_cm ?? DEFAULT_PROFILE.vitals.heightCm,
-          weightKg: data.weight_kg ?? DEFAULT_PROFILE.vitals.weightKg,
+          heightCm,
+          weightKg,
+          bmi,
+          bmiStatus,
+          calorieCap,
+          calorieMode,
         },
         personalRecords: {
           ...DEFAULT_PROFILE.personalRecords,
@@ -342,17 +378,42 @@ export const profileService = {
       if (updates.frequency !== undefined) updatePayload.training_frequency = updates.frequency;
       if (updates.avatarPath !== undefined) updatePayload.avatar_path = updates.avatarPath;
 
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const resolvedDisplayName =
+        updates.fullName ||
+        existingProfile?.display_name ||
+        user.user_metadata?.display_name ||
+        user.user_metadata?.full_name ||
+        user.email?.split('@')[0] ||
+        'Athlete';
+
       const { error } = await supabase
         .from('profiles')
         .upsert({
           id: user.id,
-          display_name: updates.fullName || user.email?.split('@')[0] || 'Athlete',
+          display_name: resolvedDisplayName,
           ...updatePayload,
         });
 
       if (error) {
         console.error('[ProfileService] Failed to update profile in Supabase:', error.message);
         return false;
+      }
+
+      if (updates.weight !== undefined && updates.weight > 0) {
+        await supabase
+          .from('body_measurements')
+          .insert({
+            user_id: user.id,
+            weight_kg: updates.weight,
+            notes: 'Updated via profile/onboarding',
+          })
+          .then(() => {});
       }
 
       return true;

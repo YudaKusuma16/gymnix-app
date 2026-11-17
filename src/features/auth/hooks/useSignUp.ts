@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import * as Haptics from '@/utils/haptics';
 import { authService, formatAuthError } from '../services/authService';
@@ -14,13 +14,15 @@ export function useSignUp() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const isEmailSubmittingRef = useRef(false);
+
   // Auto-navigate when authenticated via Google redirect
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+      if (event === 'SIGNED_IN' && session?.user && !isEmailSubmittingRef.current) {
         await authService.ensureProfileExists(session.user);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        router.replace('/(tabs)/home');
+        router.replace('/(onboarding)/gender');
       }
     });
     return () => subscription.unsubscribe();
@@ -59,6 +61,7 @@ export function useSignUp() {
     }
 
     try {
+      isEmailSubmittingRef.current = true;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setLoading(true);
 
@@ -70,11 +73,10 @@ export function useSignUp() {
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      // If user session is created immediately (auto-confirm enabled), proceed to onboarding
+      // Proceed to onboarding so user can input gender, height, weight, goal, and frequency
       if (data.session) {
         router.replace('/(onboarding)/gender');
       } else {
-        // If Supabase requires email verification
         router.replace('/(onboarding)/gender');
       }
     } catch (err: any) {

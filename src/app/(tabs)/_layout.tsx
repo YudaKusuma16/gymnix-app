@@ -1,15 +1,34 @@
-
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as Haptics from '@/utils/haptics';
 import { Tabs } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+function TabIcon({
+  name,
+  focused,
+  size = 20,
+}: {
+  name: keyof typeof Ionicons.glyphMap;
+  focused: boolean;
+  size?: number;
+}) {
+  return (
+    <View style={[styles.iconPill, focused ? styles.iconPillActive : null]}>
+      <Ionicons
+        name={name}
+        size={size}
+        color={focused ? '#E63950' : '#71717A'}
+      />
+    </View>
+  );
+}
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-  const bottomPadding = insets.bottom > 0 ? insets.bottom : 6;
-  const tabHeight = 54 + (insets.bottom > 0 ? insets.bottom : 6);
+  const bottomPadding = insets.bottom > 0 ? insets.bottom : 8;
+  const tabHeight = 58 + bottomPadding;
 
   return (
     <Tabs
@@ -21,12 +40,12 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: '#000000' },
-        tabBarActiveTintColor: '#BE3144',
-        tabBarInactiveTintColor: '#8A8F9E',
+        tabBarActiveTintColor: '#FFFFFF',
+        tabBarInactiveTintColor: '#71717A',
 
         tabBarBackground: () => (
           <BlurView
-            intensity={80}
+            intensity={85}
             tint="dark"
             style={StyleSheet.absoluteFill}
           />
@@ -40,18 +59,15 @@ export default function TabLayout() {
           height: tabHeight,
           paddingTop: 6,
           paddingBottom: bottomPadding,
-          backgroundColor: 'rgba(18, 20, 26, 0.85)',
-
+          backgroundColor: 'rgba(10, 10, 13, 0.92)',
           borderWidth: 0,
           borderTopWidth: 1,
-          borderTopColor: 'rgba(255, 255, 255, 0.08)',
-          borderRadius: 0,
-
-          elevation: 12,
+          borderTopColor: '#1C1C22',
+          elevation: 16,
           shadowColor: '#000000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.35,
-          shadowRadius: 10,
+          shadowOffset: { width: 0, height: -6 },
+          shadowOpacity: 0.45,
+          shadowRadius: 12,
         },
 
         tabBarItemStyle: {
@@ -68,23 +84,21 @@ export default function TabLayout() {
 
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: '700',
+          fontWeight: '800',
           letterSpacing: 0.2,
-          marginTop: 2,
+          marginTop: 3,
           lineHeight: 12,
           marginBottom: 0,
         },
-      }}
-    >
+      }}>
       <Tabs.Screen
         name="home"
         options={{
           title: 'Home',
           tabBarIcon: ({ focused }) => (
-            <Ionicons
+            <TabIcon
               name={focused ? 'home' : 'home-outline'}
-              size={21}
-              color={focused ? '#BE3144' : '#8A8F9E'}
+              focused={focused}
             />
           ),
         }}
@@ -95,10 +109,10 @@ export default function TabLayout() {
         options={{
           title: 'Workout',
           tabBarIcon: ({ focused }) => (
-            <Ionicons
+            <TabIcon
               name={focused ? 'barbell' : 'barbell-outline'}
-              size={22}
-              color={focused ? '#BE3144' : '#8A8F9E'}
+              focused={focused}
+              size={21}
             />
           ),
         }}
@@ -109,10 +123,11 @@ export default function TabLayout() {
         options={{
           title: 'Assistant',
           tabBarIcon: ({ focused }) => (
-            <Ionicons
-              name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'}
-              size={21}
-              color={focused ? '#BE3144' : '#8A8F9E'}
+            <TabIcon
+              name={
+                focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'
+              }
+              focused={focused}
             />
           ),
         }}
@@ -123,26 +138,22 @@ export default function TabLayout() {
         options={{
           title: 'Gyms',
           tabBarIcon: ({ focused }) => (
-            <Ionicons
+            <TabIcon
               name={focused ? 'location' : 'location-outline'}
-              size={21}
-              color={focused ? '#BE3144' : '#8A8F9E'}
+              focused={focused}
             />
           ),
         }}
       />
-
-
 
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
           tabBarIcon: ({ focused }) => (
-            <Ionicons
+            <TabIcon
               name={focused ? 'person' : 'person-outline'}
-              size={21}
-              color={focused ? '#BE3144' : '#8A8F9E'}
+              focused={focused}
             />
           ),
         }}
@@ -150,3 +161,19 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconPill: {
+    width: 38,
+    height: 26,
+    borderRadius: 9,
+    borderCurve: 'continuous',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconPillActive: {
+    backgroundColor: 'rgba(190, 49, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(190, 49, 68, 0.32)',
+  },
+});

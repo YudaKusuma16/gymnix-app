@@ -1,106 +1,238 @@
 import React, { useState } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { Button } from '@/components/ui/button';
 import { OnboardingHeader } from '@/components/ui/onboarding-header';
+import { profileService } from '@/features/profile/services/profileService';
 
 type Gender = 'male' | 'female';
+
+const GENDER_OPTIONS: {
+  id: Gender;
+  title: string;
+  subtitle: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}[] = [
+  {
+    id: 'male',
+    title: 'Male',
+    subtitle: 'Calibrated for male BMR & strength ratios',
+    icon: 'male',
+  },
+  {
+    id: 'female',
+    title: 'Female',
+    subtitle: 'Calibrated for female BMR & volume recovery',
+    icon: 'female',
+  },
+];
 
 export default function GenderSelectionScreen() {
   const router = useRouter();
   const [selectedGender, setSelectedGender] = useState<Gender>('male');
 
   const handleNext = () => {
-    router.push('/(onboarding)/measurements');
+    const genderLabel = selectedGender === 'male' ? 'Male' : 'Female';
+    profileService.updateProfile({ gender: genderLabel }).catch(() => {});
+    router.push({
+      pathname: '/(onboarding)/measurements',
+      params: { gender: genderLabel },
+    });
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#000000', justifyContent: 'space-between' }} className="flex-1 bg-black justify-between">
-      <View style={{ flex: 1, paddingHorizontal: 24 }} className="px-6 flex-1">
-        {/* Top Header */}
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.body}>
         <OnboardingHeader currentStep={1} totalSteps={4} />
 
-        {/* Wizard Content */}
-        <View className="pt-6">
-          <Text className="text-white text-2xl font-bold tracking-tight">
-            {"What's your gender?"}
+        <View style={styles.headerBlock}>
+          <Text style={styles.kicker}>BIOMETRIC CALIBRATION</Text>
+          <Text style={styles.title}>Select Your Gender</Text>
+          <Text style={styles.subtitle}>
+            Used to calculate accurate metabolic expenditure and relative strength benchmarks.
           </Text>
-          <Text className="text-[#71717A] text-sm mt-2">
-            This helps us tailor calorie targets and strength standards.
-          </Text>
+        </View>
 
-          {/* Gender Options */}
-          <View className="mt-8 gap-4">
-            {/* Male Card */}
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => setSelectedGender('male')}
-              className={`flex-row items-center justify-between p-5 rounded-3xl border ${
-                selectedGender === 'male'
-                  ? 'border-[#BE3144] bg-[#BE3144]/10'
-                  : 'border-[#1F1F1F] bg-[#0A0A0A]'
-              }`}>
-              <View className="flex-row items-center gap-4">
-                <Ionicons
-                  name="male"
-                  size={26}
-                  color={selectedGender === 'male' ? '#BE3144' : '#FFFFFF'}
-                />
-                <Text className="text-white text-lg font-bold">Male</Text>
-              </View>
-
-              <View
-                className={`w-6 h-6 rounded-full items-center justify-center border-2 ${
-                  selectedGender === 'male'
-                    ? 'border-[#BE3144] bg-[#BE3144]'
-                    : 'border-[#3F3F46]'
-                }`}>
-                {selectedGender === 'male' && (
-                  <View className="w-2.5 h-2.5 rounded-full bg-white" />
+        <View style={styles.optionsList}>
+          {GENDER_OPTIONS.map((opt) => {
+            const isSelected = selectedGender === opt.id;
+            return (
+              <TouchableOpacity
+                key={opt.id}
+                activeOpacity={0.85}
+                onPress={() => setSelectedGender(opt.id)}
+                style={[
+                  styles.optionCard,
+                  isSelected ? styles.optionCardSelected : null,
+                ]}>
+                {isSelected && (
+                  <LinearGradient
+                    colors={[
+                      'rgba(190, 49, 68, 0.18)',
+                      'rgba(190, 49, 68, 0.03)',
+                      'transparent',
+                    ]}
+                    locations={[0, 0.5, 1]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                    pointerEvents="none"
+                  />
                 )}
-              </View>
-            </TouchableOpacity>
 
-            {/* Female Card */}
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => setSelectedGender('female')}
-              className={`flex-row items-center justify-between p-5 rounded-3xl border ${
-                selectedGender === 'female'
-                  ? 'border-[#BE3144] bg-[#BE3144]/10'
-                  : 'border-[#1F1F1F] bg-[#0A0A0A]'
-              }`}>
-              <View className="flex-row items-center gap-4">
-                <Ionicons
-                  name="female"
-                  size={26}
-                  color={selectedGender === 'female' ? '#BE3144' : '#FFFFFF'}
-                />
-                <Text className="text-white text-lg font-bold">Female</Text>
-              </View>
+                <View
+                  style={[
+                    styles.iconBox,
+                    isSelected ? styles.iconBoxSelected : null,
+                  ]}>
+                  <Ionicons
+                    name={opt.icon}
+                    size={22}
+                    color={isSelected ? '#FFFFFF' : '#A1A1AA'}
+                  />
+                </View>
 
-              <View
-                className={`w-6 h-6 rounded-full items-center justify-center border-2 ${
-                  selectedGender === 'female'
-                    ? 'border-[#BE3144] bg-[#BE3144]'
-                    : 'border-[#3F3F46]'
-                }`}>
-                {selectedGender === 'female' && (
-                  <View className="w-2.5 h-2.5 rounded-full bg-white" />
-                )}
-              </View>
-            </TouchableOpacity>
-          </View>
+                <View style={styles.optionTextCol}>
+                  <Text style={styles.optionTitle}>{opt.title}</Text>
+                  <Text style={styles.optionSubtitle}>{opt.subtitle}</Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.radioOuter,
+                    isSelected ? styles.radioOuterSelected : null,
+                  ]}>
+                  {isSelected && <View style={styles.radioInner} />}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
 
-      {/* Sticky Bottom Action */}
-      <View className="px-6 pb-6 pt-3 bg-black">
-        <Button title="Next" size="lg" onPress={handleNext} />
+      <View style={styles.footer}>
+        <Button
+          title="Continue"
+          size="lg"
+          onPress={handleNext}
+          rightIcon={<Ionicons name="arrow-forward" size={17} color="#FFFFFF" />}
+        />
       </View>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'space-between',
+  },
+  body: {
+    flex: 1,
+    paddingHorizontal: 24,
+  },
+  headerBlock: {
+    paddingTop: 12,
+    marginBottom: 28,
+  },
+  kicker: {
+    color: '#BE3144',
+    fontSize: 10.5,
+    fontWeight: '800',
+    letterSpacing: 1.1,
+    marginBottom: 6,
+  },
+  title: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: -0.6,
+  },
+  subtitle: {
+    color: '#71717A',
+    fontSize: 13.5,
+    lineHeight: 20,
+    fontWeight: '500',
+    marginTop: 8,
+  },
+  optionsList: {
+    gap: 14,
+  },
+  optionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0A0A0D',
+    borderWidth: 1,
+    borderColor: '#1C1C22',
+    borderRadius: 20,
+    borderCurve: 'continuous',
+    padding: 18,
+    gap: 15,
+    overflow: 'hidden',
+  },
+  optionCardSelected: {
+    borderColor: '#BE3144',
+    backgroundColor: '#0F0A0C',
+  },
+  iconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    borderCurve: 'continuous',
+    backgroundColor: '#141418',
+    borderWidth: 1,
+    borderColor: '#25252C',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconBoxSelected: {
+    backgroundColor: '#BE3144',
+    borderColor: '#E63950',
+  },
+  optionTextCol: {
+    flex: 1,
+  },
+  optionTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  optionSubtitle: {
+    color: '#71717A',
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 3,
+    lineHeight: 17,
+  },
+  radioOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#3F3F46',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOuterSelected: {
+    borderColor: '#BE3144',
+    backgroundColor: '#BE3144',
+  },
+  radioInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+  },
+  footer: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    paddingTop: 12,
+    backgroundColor: '#000000',
+  },
+});
