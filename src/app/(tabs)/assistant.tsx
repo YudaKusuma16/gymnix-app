@@ -78,6 +78,35 @@ function isOffTopicOrMathQuery(query: string): boolean {
   return false;
 }
 
+function getCasualGreetingOrAckReply(
+  query: string,
+  athleteName?: string
+): string | null {
+  const normalized = query
+    .toLowerCase()
+    .trim()
+    .replace(/[!?.,~]+$/g, '')
+    .trim();
+
+  if (!normalized) return null;
+
+  const greetingRegex =
+    /^(?:hi+|hai+|halo+|hello+|hey+|pagi|selamat\s+(?:pagi|siang|sore|malam)|p|tes+|test+|assalamu'?alaikum|permisi)(?:\s+(?:coach|min|kak|bro|bang|there|semua))?$/i;
+
+  if (greetingRegex.test(normalized)) {
+    return `Halo${athleteName ? `, ${athleteName}` : ''}! Ada yang bisa saya bantu hari ini? Kamu bisa tanya seputar program latihan, gerakan gym, nutrisi, atau progres latihanmu.`;
+  }
+
+  const ackRegex =
+    /^(?:makasih|terima\s+kasih|thanks?|thank\s+you|thx|tq|oke+|ok+|okay|siap|mantap|noted|sip|baik)(?:\s+(?:coach|min|kak|ya|banyak))?$/i;
+
+  if (ackRegex.test(normalized)) {
+    return 'Sama-sama! Kalau ada lagi yang ingin ditanyakan seputar latihan atau program kamu, silakan tanya kapan saja.';
+  }
+
+  return null;
+}
+
 let cachedExercisesMemory: ExerciseItem[] = [];
 let cachedBaseContextMemory = '';
 let lastContextFetchTime = 0;
@@ -349,9 +378,7 @@ function renderFormattedText(rawText: string) {
 const DEFAULT_GREETING: Message = {
   id: '1',
   sender: 'ai',
-  text: 'Halo! Saya siap membantu menyusun program latihan, memilih gerakan dari katalog database, dan mengevaluasi progres kamu.',
-  recommendation:
-    'Pilih topik di bawah atau ketik target otot yang ingin kamu latih hari ini.',
+  text: 'Halo! Ada yang bisa saya bantu hari ini?',
   timestamp: 'Now',
 };
 
@@ -361,6 +388,7 @@ export default function AssistantScreen() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
   const initialGreetingRef = useRef<Message>(DEFAULT_GREETING);
+  const athleteNameRef = useRef<string>('');
 
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -375,49 +403,22 @@ export default function AssistantScreen() {
       try {
         buildDatabaseContext('').catch(() => {});
 
-        const [profile, history, milestones] = await Promise.all([
-          profileService.getProfile(),
-          workoutService.getWorkoutHistory(5),
-          profileService.getLifetimeMilestones(),
-        ]);
+        const profile = await profileService.getProfile();
         if (!mounted) return;
 
-        const name =
+        const hasCustomName =
           profile.fullName &&
           profile.fullName !== 'User' &&
-          profile.fullName !== 'Athlete'
-            ? profile.fullName.split(' ')[0]
-            : profileService.getCachedAthleteName() || 'Athlete';
-
-        const vitalsInfo =
-          profile.vitals.weightKg > 0 && profile.vitals.heightCm > 0
-            ? `${profile.vitals.weightKg} kg • ${profile.vitals.heightCm} cm`
-            : '';
-
-        const goalInfo =
-          profile.trainingProgram.primaryObjective &&
-          profile.trainingProgram.primaryObjective !== '-'
-            ? profile.trainingProgram.primaryObjective
-            : '';
-
-        const metaParts = [vitalsInfo, goalInfo].filter(Boolean).join(' • ');
-
-        let workoutSummary = '';
-        let initialRec =
-          'Minta rekomendasi latihan hari ini sesuai profil dan peralatan yang tersedia.';
-
-        if (history && history.length > 0) {
-          const last = history[0];
-          const lastVol = Number(last.total_volume_kg) || 0;
-          workoutSummary = `\nSesi terakhir: ${last.title || 'Workout'} (${lastVol.toLocaleString()} kg • ${milestones.totalWorkouts} total sesi).`;
-          initialRec = `Tanyakan menu latihan lanjutan setelah sesi ${last.title || 'Workout'} terakhir kamu.`;
-        }
+          profile.fullName !== 'Athlete';
+        const firstName = hasCustomName ? profile.fullName.split(' ')[0] : '';
+        athleteNameRef.current = firstName;
 
         const personalizedGreeting: Message = {
           id: '1',
           sender: 'ai',
-          text: `Halo, ${name}.${metaParts ? ` [${metaParts}]` : ''}${workoutSummary}\n\nOtot atau program apa yang ingin kamu fokuskan hari ini?`,
-          recommendation: initialRec,
+          text: firstName
+            ? `Halo, ${firstName}! Ada yang bisa saya bantu hari ini?`
+            : 'Halo! Ada yang bisa saya bantu hari ini?',
           timestamp: getCurrentTime(),
         };
 
@@ -502,20 +503,35 @@ export default function AssistantScreen() {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 80);
 
-    if (isOffTopicOrMathQuery(text)) {
+    const appendLocalAiReply = (aiText: string, recommendation?: string) => {
       setIsTyping(false);
-      const refusalMsg: Message = {
+      const localMsg: Message = {
         id: createId(),
         sender: 'ai',
-        text: 'Saya khusus membantu seputar program latihan gym, pemilihan gerakan, nutrisi kebugaran, dan fitur di aplikasi Gymnix. Pertanyaan matematika atau topik umum di luar kebugaran tidak dapat diproses.',
-        recommendation:
-          'Pilih salah satu topik latihan di bawah atau sebutkan target otot yang ingin kamu latih.',
+        text: aiText,
+        recommendation,
         timestamp: getCurrentTime(),
       };
-      setMessages((prev) => [...prev, refusalMsg]);
+      setMessages((prev) => [...prev, localMsg]);
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 80);
+    };
+
+    const casualReply = getCasualGreetingOrAckReply(
+      text,
+      athleteNameRef.current
+    );
+    if (casualReply) {
+      appendLocalAiReply(casualReply);
+      return;
+    }
+
+    if (isOffTopicOrMathQuery(text)) {
+      appendLocalAiReply(
+        'Saya khusus membantu seputar program latihan gym, pemilihan gerakan, nutrisi kebugaran, dan fitur di aplikasi Gymnix. Pertanyaan matematika atau topik umum di luar kebugaran tidak dapat diproses.',
+        'Pilih salah satu topik latihan di bawah atau sebutkan target otot yang ingin kamu latih.'
+      );
       return;
     }
 
@@ -576,11 +592,12 @@ export default function AssistantScreen() {
         '- Gyms Tab: GPS nearby gyms finder (Google Places & Foursquare).',
         '- Profile Tab: Athlete bio, Body Vitals (height, weight, BMI), Personal Records (SBD), Lifetime Stats, 12-week Consistency Heatmap, Settings.',
         '',
-        'STYLE & FORMATTING RULES:',
-        '1. Base all recommendations strictly on the user’s real database profile, PRs, workout history, and the "GYMNIX EXERCISE DATABASE CATALOG" below.',
-        '2. When recommending exercises, ONLY pick exercise names from the "GYMNIX EXERCISE DATABASE CATALOG" below. Format exercise lists as numbered lines: "1. Exercise Name — 3 set x 8-12 rep (target/tip)".',
-        '3. Write in clean, concise, direct language matching the user’s language (Indonesian or English). Do NOT use markdown bold (**), headers (#), or cheesy filler phrases.',
-        '4. At the very end of your response, always include one separate final line starting with "Rekomendasi: " (or "Recommendation: ") containing one specific next action.',
+        'CONVERSATIONAL FLOW & STYLE RULES:',
+        '1. Be natural and conversational. Match the depth of your answer to what the user actually asks. If the user only greets you, makes small talk, or asks a simple general question, answer naturally and concisely without dumping their height, weight, BMI, PRs, or workout history.',
+        '2. Only reference the user’s database profile, PRs, workout history, or the "GYMNIX EXERCISE DATABASE CATALOG" when it is directly relevant to the user’s question (for example, when they ask for a workout program, exercise recommendation, or progress evaluation).',
+        '3. When recommending exercises, ONLY pick exercise names from the "GYMNIX EXERCISE DATABASE CATALOG" below. Format exercise lists as numbered lines: "1. Exercise Name — 3 set x 8-12 rep (target/tip)".',
+        '4. Write in clean, concise, friendly language matching the user’s language (Indonesian or English). Do NOT use markdown bold (**), headers (#), or robotic filler.',
+        '5. Only include a final line starting with "Rekomendasi: " (or "Recommendation: ") when you are giving a specific workout, exercise, or training plan and a concrete next action is helpful. Omit it for simple greetings or brief conversational replies.',
         '',
         dbContext,
       ].join('\n');
