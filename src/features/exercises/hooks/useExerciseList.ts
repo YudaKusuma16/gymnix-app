@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as Haptics from '@/utils/haptics';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { exerciseService } from '../services/exerciseService';
 import { ExerciseItem } from '../types/exercise.types';
 
@@ -169,32 +169,6 @@ export function useExerciseList() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSearchQuery('');
     setEquipmentFilter('All');
-    setMuscleFilter('All');
-    setActiveFilterPicker(null);
   };
 
-  return {
-    exercises,
-    loading,
-    error,
-    refresh,
-    searchQuery,
-    setSearchQuery,
-    equipmentFilter,
-    setEquipmentFilter,
-    muscleFilter,
-    setMuscleFilter,
-    sortAsc,
-    toggleSort,
-    activeFilterPicker,
-    setActiveFilterPicker,
-    equipmentOptions,
-    muscleOptions,
-    filteredExercises,
-    resetFilters,
-    selectedIds,
-    toggleSelectExercise,
-    clearSelected,
-    selectedCount: selectedIds.length,
-  };
 }
