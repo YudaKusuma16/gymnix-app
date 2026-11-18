@@ -100,23 +100,25 @@ export default function ExerciseDetailScreen() {
           paddingBottom: insets.bottom + 90,
         }}
         className="flex-1 bg-black">
-        {/* Full-width Edge-to-Edge Hero Image */}
+        {/* Compact Contained Hero GIF / Image */}
         {heroImageUrl ? (
-          <View className="w-full aspect-[3/2] bg-black items-center justify-center overflow-hidden mb-4">
-            <Image
-              source={{ uri: heroImageUrl }}
-              style={{ width: '100%', height: '100%' }}
-              contentFit="cover"
-              transition={180}
-            />
-            {imagesList.length > 1 && (
-              <View className="absolute top-3 right-3 bg-black/75 px-2.5 py-1 rounded-full flex-row items-center gap-1.5 border border-white/10">
-                <Ionicons name="repeat" size={12} color="#BE3144" />
-                <Text className="text-white text-[10.5px] font-semibold tracking-wide">
-                  {activeImageIndex === 0 ? 'Start' : 'Peak'}
-                </Text>
-              </View>
-            )}
+          <View className="px-4 pt-3 mb-4">
+            <View className="w-full h-60 rounded-2xl bg-white border border-[#222226] items-center justify-center overflow-hidden">
+              <Image
+                source={{ uri: heroImageUrl }}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="contain"
+                transition={180}
+              />
+              {imagesList.length > 1 && (
+                <View className="absolute top-3 right-3 bg-black/75 px-2.5 py-1 rounded-full flex-row items-center gap-1.5 border border-white/10">
+                  <Ionicons name="repeat" size={12} color="#BE3144" />
+                  <Text className="text-white text-[10.5px] font-semibold tracking-wide">
+                    {activeImageIndex === 0 ? 'Start' : 'Peak'}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
         ) : (
           <View className="items-center py-4 mb-3">

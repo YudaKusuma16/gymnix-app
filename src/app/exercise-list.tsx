@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
   ScrollView,
   StyleSheet,
   Text,
@@ -47,7 +48,9 @@ export default function ExerciseListScreen() {
     selectedCount,
   } = useExerciseList();
 
-  const handleExercisePress = (ex: ExerciseItem) => {
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+  const handleExercisePress = useCallback((ex: ExerciseItem) => {
     Haptics.selectionAsync();
     const primaryMuscle =
       ex.primary_muscles && ex.primary_muscles.length > 0
@@ -62,7 +65,7 @@ export default function ExerciseListScreen() {
         muscle: capitalizeWords(primaryMuscle),
         equipment: capitalizeWords(ex.equipment || 'Body Only'),
         bodyPart: capitalizeWords(ex.body_part || ''),
-        description: ex.description || '',
+        description: ex.description || ex.overview || '',
         instructions: JSON.stringify(ex.instructions || []),
         primaryMuscles: JSON.stringify(ex.primary_muscles || []),
         secondaryMuscles: JSON.stringify(ex.secondary_muscles || []),
@@ -75,7 +78,26 @@ export default function ExerciseListScreen() {
         mode: isWorkoutMode ? 'workout' : 'browse',
       },
     });
-  };
+  }, [isWorkoutMode, router]);
+
+  const handleToggleSelect = useCallback((ex: ExerciseItem) => {
+    toggleSelectExercise(ex.id);
+  }, [toggleSelectExercise]);
+
+  const keyExtractor = useCallback((item: ExerciseItem) => item.id, []);
+
+  const renderExerciseItem = useCallback(
+    ({ item }: { item: ExerciseItem }) => (
+      <ExerciseCard
+        exercise={item}
+        isWorkoutMode={isWorkoutMode}
+        isSelected={selectedIdSet.has(item.id)}
+        onPress={handleExercisePress}
+        onToggleSelect={handleToggleSelect}
+      />
+    ),
+    [handleExercisePress, handleToggleSelect, isWorkoutMode, selectedIdSet]
+  );
 
   const handleStartWorkout = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -306,15 +328,30 @@ export default function ExerciseListScreen() {
           <Text className="text-[#71717A] text-xs font-medium">Loading Supabase catalog...</Text>
         </View>
       ) : (
-        <ScrollView
+        <FlatList
+          data={filteredExercises}
+          keyExtractor={keyExtractor}
+          renderItem={renderExerciseItem}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          initialNumToRender={12}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={true}
           contentContainerStyle={{
             paddingHorizontal: 16,
             paddingTop: 12,
             paddingBottom: isWorkoutMode && selectedCount > 0 ? insets.bottom + 90 : insets.bottom + 40,
           }}
-          className="flex-1">
-          {filteredExercises.length === 0 ? (
+          className="flex-1"
+          ListHeaderComponent={
+            filteredExercises.length > 0 ? (
+              <Text className="text-[#52525B] text-[11px] font-bold uppercase tracking-wider mb-2 pl-1">
+                {filteredExercises.length} Exercises Available
+              </Text>
+            ) : undefined
+          }
+          ListEmptyComponent={
             <View className="items-center justify-center py-20 gap-2">
               <Ionicons name="barbell-outline" size={40} color="#3F3F46" />
               <Text className="text-white font-bold text-base mt-2">No exercises found</Text>
@@ -322,25 +359,8 @@ export default function ExerciseListScreen() {
                 Try adjusting your search query or reset active filters.
               </Text>
             </View>
-          ) : (
-            <View>
-              <Text className="text-[#52525B] text-[11px] font-bold uppercase tracking-wider mb-2 pl-1">
-                {filteredExercises.length} Exercises Available
-              </Text>
-
-              {filteredExercises.map((ex) => (
-                <ExerciseCard
-                  key={ex.id}
-                  exercise={ex}
-                  isWorkoutMode={isWorkoutMode}
-                  isSelected={selectedIds.includes(ex.id)}
-                  onPress={handleExercisePress}
-                  onToggleSelect={() => toggleSelectExercise(ex.id)}
-                />
-              ))}
-            </View>
-          )}
-        </ScrollView>
+          }
+        />
       )}
 
       {/* 4. Floating Start Workout Bar (When exercises selected in workout mode) */}

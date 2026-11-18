@@ -1,4 +1,14 @@
-import React, { useCallback, useState } from 'react';
+import { exerciseService } from '@/features/exercises/services/exerciseService';
+import { useWorkoutHub } from '@/features/workout/hooks/useWorkoutHub';
+import {
+  LocalWorkoutSessionRow,
+  workoutService,
+} from '@/features/workout/services/workoutService';
+import * as Haptics from '@/utils/haptics';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -7,16 +17,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from '@/utils/haptics';
-import { useWorkoutHub } from '@/features/workout/hooks/useWorkoutHub';
-import {
-  LocalWorkoutSessionRow,
-  workoutService,
-} from '@/features/workout/services/workoutService';
-import { exerciseService } from '@/features/exercises/services/exerciseService';
 
 interface SplitPreset {
   id: string;
@@ -123,19 +123,6 @@ export default function WorkoutScreen() {
     }, [loadWorkoutData])
   );
 
-  const handleResumeSession = () => {
-    if (!activeSession) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push({
-      pathname: '/workout-active',
-      params: {
-        resume: 'true',
-        sessionId: activeSession.id,
-        title: activeSession.title || 'Workout Session',
-      },
-    });
-  };
-
   const handleStartPreset = (preset: SplitPreset) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push({
@@ -207,30 +194,6 @@ export default function WorkoutScreen() {
             );
           })}
         </View>
-
-        {/* Active Session Resume Banner */}
-        {activeSession && (
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={handleResumeSession}
-            style={styles.activeBanner}>
-            <View style={styles.activeBannerLeft}>
-              <View style={styles.liveDotOuter}>
-                <View style={styles.liveDotInner} />
-              </View>
-              <View style={styles.flexOne}>
-                <Text style={styles.activeBannerLabel}>IN PROGRESS</Text>
-                <Text style={styles.activeBannerTitle} numberOfLines={1}>
-                  {activeSession.title || 'Active Workout'}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.resumeBadge}>
-              <Text style={styles.resumeBadgeText}>Resume</Text>
-              <Ionicons name="arrow-forward" size={12} color="#FFFFFF" />
-            </View>
-          </TouchableOpacity>
-        )}
 
         {/* 3. Primary Actions Grid */}
         <View style={styles.sectionBlock}>

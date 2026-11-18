@@ -20,6 +20,7 @@ export interface ExerciseItem {
   body_part?: string;
   target?: string;
   description?: string;
+  overview?: string | null;
   difficulty?: string;
   gif_url?: string;
 }

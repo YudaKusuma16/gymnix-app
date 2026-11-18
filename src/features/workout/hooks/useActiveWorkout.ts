@@ -349,24 +349,6 @@ export function useActiveWorkout() {
     }
   };
 
-  // Dynamic Plate Breakdown text based on active/entered weight
-  const plateText = useMemo(() => {
-    const allSets = Object.values(exerciseSets).flat();
-    const activeSet =
-      allSets.find((s) => s.weight && !s.completed) ||
-      allSets.find((s) => s.weight) ||
-      exerciseSets.primary?.[0];
-    const weightNum = parseFloat(activeSet?.weight || '');
-    if (!weightNum || isNaN(weightNum)) {
-      return '20 kg Olympic Bar • Enter weight to calculate plates';
-    }
-    if (weightNum <= 20) {
-      return `${weightNum} kg • Olympic Bar or Dumbbells`;
-    }
-    const perSide = (weightNum - 20) / 2;
-    return `20 kg Bar + ${perSide.toFixed(1).replace(/\.0$/, '')} kg each side`;
-  }, [exerciseSets]);
-
   const handleFinishWorkout = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const allSets = Object.values(exerciseSets).flat();
@@ -442,7 +424,6 @@ export function useActiveWorkout() {
     getExerciseSets,
     nextExercises,
     expandedNext,
-    plateText,
     setExpandedNext,
     toggleSetComplete,
     updateSetWeight,

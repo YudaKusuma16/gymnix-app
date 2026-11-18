@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useActiveWorkout } from '@/features/workout/hooks/useActiveWorkout';
 import { formatElapsedSeconds, formatRestSeconds } from '@/utils/formatters';
@@ -33,7 +33,6 @@ export default function WorkoutActiveScreen() {
     getExerciseSets,
     nextExercises,
     expandedNext,
-    plateText,
     setExpandedNext,
     toggleSetComplete,
     updateSetWeight,
@@ -315,22 +314,7 @@ export default function WorkoutActiveScreen() {
         {/* 4. Set Logger Table for Primary Exercise */}
         {renderExerciseLogTable('primary')}
 
-        {/* 5. Plate Calculator Card */}
-        <View className="flex-row items-center bg-[#0A0A0A] border border-[#1F1F1F] rounded-xl p-3.5 gap-3 mb-6">
-          <View className="w-9 h-9 rounded-lg bg-[#121212] border border-[#1F1F1F] items-center justify-center">
-            <MaterialCommunityIcons name="calculator" size={20} color="#71717A" />
-          </View>
-          <View className="flex-1">
-            <Text className="text-[#71717A] text-[11px] font-bold tracking-wider uppercase mb-0.5">
-              PLATE CALCULATOR
-            </Text>
-            <Text className="text-[#C8C6C5] text-xs font-medium">
-              {plateText}
-            </Text>
-          </View>
-        </View>
-
-        {/* 6. Up Next In Session Accordion */}
+        {/* 5. Up Next In Session Accordion */}
         {nextExercises.length > 0 && (
           <View className="mb-6">
             <Text className="text-[#71717A] text-xs font-semibold tracking-wider uppercase mb-3">

@@ -1,4 +1,12 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import { HomeDashboardData, homeService, VolumeDay } from '@/features/home/services/homeService';
+import { profileService } from '@/features/profile/services/profileService';
+import { supabase } from '@/lib/supabase';
+import * as Haptics from '@/utils/haptics';
+import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -7,14 +15,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from '@/utils/haptics';
-import { homeService, HomeDashboardData, VolumeDay } from '@/features/home/services/homeService';
-import { profileService } from '@/features/profile/services/profileService';
-import { supabase } from '@/lib/supabase';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -90,19 +90,6 @@ export default function HomeScreen() {
     });
   };
 
-  const handleResumeWorkout = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push({
-      pathname: '/workout-active',
-      params: {
-        resume: 'true',
-        sessionId: dashboard.activeSession?.id || '',
-        title: dashboard.activeSession?.title || 'Full Body Strength',
-        exercises: JSON.stringify(dashboard.todayExercises),
-      },
-    });
-  };
-
   const handleProfilePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push('/(tabs)/profile');
@@ -151,35 +138,6 @@ export default function HomeScreen() {
             )}
           </TouchableOpacity>
         </View>
-
-        {/* Banner Sesi Aktif (Resume Workout - rendered dynamically if active session exists) */}
-        {dashboard.activeSession && (
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={handleResumeWorkout}
-            style={styles.activeWorkoutBanner}
-            accessibilityRole="button"
-            accessibilityLabel="Resume active workout">
-            <View style={styles.activeBannerLeft}>
-              <View style={styles.pulsingDotWrapper}>
-                <View style={styles.pulsingDot} />
-              </View>
-
-              <View style={styles.activeBannerTextCol}>
-                <Text style={styles.activeBannerTitle}>Workout in Progress</Text>
-                <Text style={styles.activeBannerSplit}>
-                  {dashboard.activeSession.title || 'Full Body Workout'}
-                </Text>
-                <Text style={styles.activeBannerMeta}>Tap to continue your session</Text>
-              </View>
-            </View>
-
-            <View style={styles.resumePill}>
-              <Text style={styles.resumePillText}>Resume</Text>
-              <Ionicons name="play" size={11} color="#FFFFFF" />
-            </View>
-          </TouchableOpacity>
-        )}
 
         {/* 2. Section: Today's Workout (Dynamic from Database) */}
         <View style={styles.sectionContainer}>

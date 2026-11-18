@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as Haptics from '@/utils/haptics';
 import { exerciseService } from '../services/exerciseService';
 import { ExerciseItem } from '../types/exercise.types';
 
 export function useExerciseList() {
-  const [exercises, setExercises] = useState<ExerciseItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialCached] = useState<ExerciseItem[]>(() => exerciseService.getCachedSync());
+  const [exercises, setExercises] = useState<ExerciseItem[]>(initialCached);
+  const [loading, setLoading] = useState(initialCached.length === 0);
   const [error, setError] = useState<string | null>(null);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [equipmentFilter, setEquipmentFilter] = useState('All');
   const [muscleFilter, setMuscleFilter] = useState('All');
   const [sortAsc, setSortAsc] = useState(true);
@@ -18,19 +20,27 @@ export function useExerciseList() {
   // Workout mode selection state
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const toggleSelectExercise = (id: string) => {
+  const toggleSelectExercise = useCallback((id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
-  };
+  }, []);
 
-  const clearSelected = () => {
+  const clearSelected = useCallback(() => {
     setSelectedIds([]);
-  };
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     let isMounted = true;
+
     exerciseService
       .getAll()
       .then((data) => {
@@ -41,7 +51,9 @@ export function useExerciseList() {
       })
       .catch((err: any) => {
         if (isMounted) {
-          setError(err?.message || 'Failed to load exercises');
+          if (initialCached.length === 0) {
+            setError(err?.message || 'Failed to load exercises');
+          }
           setLoading(false);
         }
       });
@@ -49,7 +61,7 @@ export function useExerciseList() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [initialCached.length]);
 
   const refresh = async () => {
     try {
@@ -91,10 +103,10 @@ export function useExerciseList() {
 
   // Filter and sort exercises
   const filteredExercises = useMemo(() => {
-    let list = [...exercises];
+    let list = exercises;
 
-    if (searchQuery.trim().length > 0) {
-      const q = searchQuery.toLowerCase().trim();
+    if (debouncedSearchQuery.trim().length > 0) {
+      const q = debouncedSearchQuery.toLowerCase().trim();
       list = list.filter((ex) => {
         const matchesName = ex.name.toLowerCase().includes(q);
         const matchesPrimary = ex.primary_muscles?.some((m) =>
@@ -140,15 +152,13 @@ export function useExerciseList() {
       });
     }
 
-    list.sort((a, b) => {
-      if (sortAsc) {
-        return a.name.localeCompare(b.name);
-      }
-      return b.name.localeCompare(a.name);
+    const sorted = [...list].sort((a, b) => {
+      const cmp = a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+      return sortAsc ? cmp : -cmp;
     });
 
-    return list;
-  }, [exercises, searchQuery, equipmentFilter, muscleFilter, sortAsc]);
+    return sorted;
+  }, [exercises, debouncedSearchQuery, equipmentFilter, muscleFilter, sortAsc]);
 
   const toggleSort = () => {
     Haptics.selectionAsync();

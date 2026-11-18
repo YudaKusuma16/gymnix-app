@@ -23,7 +23,20 @@ export interface LocalWorkoutSessionRow {
 
 let activeSessionInMemory: LocalWorkoutSessionRow | null = null;
 
+type ActiveSessionListener = (session: LocalWorkoutSessionRow | null) => void;
+const activeSessionListeners = new Set<ActiveSessionListener>();
+
+function notifyActiveSessionChanged(session: LocalWorkoutSessionRow | null) {
+  activeSessionListeners.forEach((listener) => listener(session));
+}
+
 export const workoutService = {
+  subscribeActiveSession(listener: ActiveSessionListener): () => void {
+    activeSessionListeners.add(listener);
+    return () => {
+      activeSessionListeners.delete(listener);
+    };
+  },
   /**
    * Start a new active workout session (persisted locally in SQLite immediately)
    */
@@ -78,6 +91,7 @@ export const workoutService = {
       }
     }
 
+    notifyActiveSessionChanged(newSessionRow);
     return sessionId;
   },
 
@@ -86,6 +100,7 @@ export const workoutService = {
    */
   async cancelSession(sessionId?: string): Promise<boolean> {
     activeSessionInMemory = null;
+    notifyActiveSessionChanged(null);
     const db = getDatabase();
     if (db) {
       try {
@@ -103,6 +118,7 @@ export const workoutService = {
         console.error('[WorkoutService] Error cancelling session:', err);
       }
     }
+    notifyActiveSessionChanged(null);
     return true;
   },
 
@@ -214,6 +230,7 @@ export const workoutService = {
     };
 
     activeSessionInMemory = null;
+    notifyActiveSessionChanged(null);
 
     // 1. Write to local SQLite
     const db = getDatabase();

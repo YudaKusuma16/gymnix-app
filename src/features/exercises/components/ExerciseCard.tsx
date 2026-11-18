@@ -56,7 +56,9 @@ export const ExerciseCard = React.memo(function ExerciseCard({
               source={{ uri: imageUrl }}
               style={{ width: 52, height: 52 }}
               contentFit="cover"
-              transition={200}
+              autoplay={false}
+              cachePolicy="memory-disk"
+              recyclingKey={exercise.id}
             />
           ) : (
             <Ionicons

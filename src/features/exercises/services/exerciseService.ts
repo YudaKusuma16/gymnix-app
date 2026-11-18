@@ -50,6 +50,7 @@ export const exerciseService = {
         try {
           const now = new Date().toISOString();
           db.withTransactionSync(() => {
+            db.runSync(`DELETE FROM cached_exercises`);
             for (const ex of exercises) {
               db.runSync(
                 `INSERT OR REPLACE INTO cached_exercises (id, name, category, equipment, primary_muscles, instructions, images, updated_at)
